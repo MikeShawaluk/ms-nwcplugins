@@ -1,4 +1,4 @@
--- Version 0.1
+-- Version 0.9
 
 --[[----------------------------------------------------------------
 Ottavamatic.ms
@@ -11,26 +11,14 @@ local userObjTypeName = ...
 local user = nwcdraw.user
 local showInTargets = {edit=1, selector=1}
 local transposeLookup = { [12] = 1, [-12] = -1, [24] = 2, [-24] = -2 }
+local priorUser8va = nwc.ntnidx.new()
+local nextUser8va = nwc.ntnidx.new()
+local priorPatch = nwc.ntnidx.new()
+local nextPatch = nwc.ntnidx.new()
+local edgeNotePos = nwc.drawpos.new()
+local endOfStaff = nwc.drawpos.new()
 
-local function doPrintName(showAs)
-	nwcdraw.setFont('Arial', 3, 'b')
-	local xyar = nwcdraw.getAspectRatio()
-	local w,h = nwcdraw.calcTextSize(showAs)
-	local w_adj, h_adj = h/xyar/2, (w*xyar+2)/2
-	if not nwcdraw.isDrawing() then return w_adj*2 end
-	nwcdraw.alignText('bottom','center')
-	nwcdraw.moveTo(-w_adj,0)
-	nwcdraw.beginPath()
-	nwcdraw.roundRect(w_adj, h_adj, 0.15)
-	nwcdraw.endPath('fill')
-	nwcdraw.moveTo(0,0)
-	nwcdraw.setWhiteout()
-	nwcdraw.text(showAs,90)
-	nwcdraw.setWhiteout(false)
-	return 0
-end
-
-local obj_spec = {
+local spec_Ottavamatic = {
 	Class = { type='text', default='StaffSig' },
 	UpOneText = { type='text', default='8va' },
 	DownOneText = { type='text', default='8va bassa' },
@@ -41,27 +29,26 @@ local obj_spec = {
 	StaffTranspose = { type='int', default=0, min=-120, max=120 }
 }
 
-local function do_create(t)
-	t.Class = t.Class
-	t.UpOneText = t.UpOneText
-	t.DownOneText = t.DownOneText
-	t.UpTwoText = t.UpTwoText
-	t.DownTwoText = t.DownTwoText
-	t.Courtesy = t.Courtesy
-	t.IncludeRests = t.IncludeRests
-	t.StaffTranspose = t.StaffTranspose
+local function doPrintName(showAs)
+	nwcdraw.setFont('Arial', 3, 'b')
+	local xyar = nwcdraw.getAspectRatio()
+	local w, h = nwcdraw.calcTextSize(showAs)
+	local w_adj, h_adj = h/xyar, (w*xyar)+2
+	if not nwcdraw.isDrawing() then return w_adj end
+	nwcdraw.alignText('bottom', 'left')	
+	nwcdraw.moveTo(0, 0)
+	nwcdraw.beginPath()
+	nwcdraw.rectangle(-w_adj, -h_adj)
+	nwcdraw.endPath('fill')
+	nwcdraw.moveTo(0, 0.5)
+	nwcdraw.setWhiteout()
+	nwcdraw.text(showAs, 90)
+	nwcdraw.setWhiteout(false)
+	return 0
 end
-
-local priorUser8va = nwc.ntnidx.new()
-local nextUser8va = nwc.ntnidx.new()
-local priorPatch = nwc.ntnidx.new()
-local nextPatch = nwc.ntnidx.new()
-
-local edgeNotePos = nwc.drawpos.new()
-local endOfStaff = nwc.drawpos.new()
 	
 local function find8vaEdge(idx, dir, t)
-	if not idx:find(dir,'objType','Instrument') then return false end
+	if not idx:find(dir,'objType', 'Instrument') then return false end
 	local trans = (tonumber(idx:objProp('Trans')) or 0) - t.StaffTranspose
 	return transposeLookup[trans] or 0
 end
@@ -99,48 +86,46 @@ local function drawShift(drawpos1, drawpos2, extendingSection, endOfSection, shi
 	if endOfSection then nwcdraw.line(x2, y, x2, y-tail) end
 end
 
-local function do_draw(t)
+local function create_Ottavamatic(t)
+	t.Class = t.Class
+	t.UpOneText = t.UpOneText
+	t.DownOneText = t.DownOneText
+	t.UpTwoText = t.UpTwoText
+	t.DownTwoText = t.DownTwoText
+	t.Courtesy = t.Courtesy
+	t.IncludeRests = t.IncludeRests
+	t.StaffTranspose = t.StaffTranspose
+end
+
+local function draw_Ottavamatic(t)
 	local drawpos = nwc.drawpos
  	local media = nwcdraw.getTarget()
 	local w = 0
-	
 	local yOffset = user:staffPos()
-	
 	if showInTargets[media] and not nwcdraw.isAutoInsert() then
 		w = doPrintName(userObjTypeName)
 	end
-
 	if not nwcdraw.isDrawing() then return w end
-	
 	if user:isHidden() then return end
-	
 	local what = t.IncludeRests and 'noteOrRest' or 'note'
-	
 	nwcdraw.setFontClass('StaffItalic')
 	nwcdraw.setFontSize(5)
 	nwcdraw.setPen('dash', 250)
 	nwcdraw.alignText('bottom', 'left')
-
 	if not priorUser8va:find('prior', 'user', userObjTypeName) then priorUser8va:find('first') end
 	if not nextUser8va:find('next', 'user', userObjTypeName) then nextUser8va:find('last') end
- 
 	if not drawpos:find('next', what) then return end
-	
 	endOfStaff:find('last')
 	priorPatch:find(drawpos)
 	nextPatch:find(drawpos)
 	local priorShift = find8vaEdge(priorPatch, 'prior', t)
 	local yPos = priorPatch:staffPos()
-
 	if priorPatch < priorUser8va then priorPatch:find(priorUser8va) end
-
 	repeat
 		local nextShift = find8vaEdge(nextPatch, 'next', t)
 		local nextPatchYPos = nextPatch:staffPos()
 		if not nextShift then nextPatch:find('last') end
-		
 		if nextPatch > nextUser8va then nextPatch:find(nextUser8va) end
-
 		if priorShift and (priorShift ~= 0) then
 			priorPatch:find('next', what)
 			local extendingSection = priorPatch < drawpos
@@ -158,16 +143,16 @@ local function do_draw(t)
 	until not (priorShift and (nextPatch < nextUser8va) and priorPatch:find(nextPatch) and drawpos:find(priorPatch) and drawpos:find('next', what))
 end
 
-local function do_transpose(t, semitones, notepos, updpatch)
+local function transpose_Ottavamatic(t, semitones, notepos, updpatch)
 	if updpatch then
 		t.StaffTranspose = t.StaffTranspose - semitones
 	end
 end
  
 return {
-	spec = obj_spec,
-	create = do_create,
-	width = do_draw,
-	draw = do_draw,
-	transpose = do_transpose
-	}
+	spec = spec_Ottavamatic,
+	create = create_Ottavamatic,
+	width = draw_Ottavamatic,
+	draw = draw_Ottavamatic,
+	transpose = transpose_Ottavamatic
+}

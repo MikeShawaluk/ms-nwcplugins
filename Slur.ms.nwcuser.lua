@@ -1,13 +1,26 @@
--- Version 0.1
+-- Version 0.9
 
 --[[----------------------------------------------------------------
 Slur.ms
-Draws solid, dashed or dotted slurs with user specified offset and strength
+
+Draws solid, dashed or dotted slurs with adjustable end point offsets and strength
+
 --]]----------------------------------------------------------------
 
 local user = nwcdraw.user
 local startNote = nwc.drawpos.new()
 local endNote = nwc.drawpos.new()
+
+local spec_Slur = {
+	Span = { type='int', default=2, min=2 },
+	Pen = { type='enum', default='solid', list=nwc.txt.DrawPenStyle },
+	Dir = { type='enum', default='Default', list=nwc.txt.TieDir },
+	Strength = { type='float', default=1, step=0.5 },
+	StartOffsetX = { type='float', step=0.1, min=-100, max=100, default=0 },
+	StartOffsetY = { type='float', step=0.1, min=-100, max=100, default=0 },
+	EndOffsetX = { type='float', step=0.1, min=-100, max=100, default=0 },
+	EndOffsetY = { type='float', step=0.1, min=-100, max=100, default=0 },
+}
 
 local function noteStuff(item)
 	local opts = item:objProp('Opts') or ''
@@ -34,53 +47,34 @@ local function noteStuff(item)
 	return stem, slur, arcPitch, noteheadOffset, baseNote
 end
 
-local spec_Slur = {
-	Span = { type='int', default=2, min=2 },
-	Pen = { type='enum', default='solid', list=nwc.txt.DrawPenStyle },
-	Dir = { type='enum', default='Default', list=nwc.txt.TieDir },
-	Strength = { type='float', default=1 },
-	StartOffsetX = { type='float', default=0 },
-	StartOffsetY = { type='float', default=0 },
-	EndOffsetX = { type='float', default=0 },
-	EndOffsetY = { type='float', default=0 },
-}
-
 local function draw_Slur(t)
 	local span = t.Span
 	local pen = t.Pen
 	local dir = t.Dir
 	local strength = t.Strength
-
 	local startOffsetX, startOffsetY = t.StartOffsetX, t.StartOffsetY
 	local endOffsetX, endOffsetY = t.EndOffsetX, t.EndOffsetY
-	
 	startNote:find('next', 'noteOrRest')
 	if not startNote then return end
-	
 	local found
 	for i = 1, span do
 		found = endNote:find('next', 'noteOrRest')
 	end
 	if not found then return end
-	
 	local startStem, slurDir, ya, xo1, startNotehead = noteStuff(startNote)
 	local endStem, _, _, xo2, endNotehead = noteStuff(endNote)
 	ya = ya * strength
-	
 	if dir ~= 'Default' then slurDir = dir end
-	
 	local startNoteYBottom, startNoteYTop = startNote:notePos(1) or 0, startNote:notePos(startNote:noteCount()) or 0
 	local endNoteYBottom, endNoteYTop = endNote:notePos(1) or 0, endNote:notePos(endNote:noteCount()) or 0	
 	local x1 = startNote:xyTimeslot()
 	local x2 = endNote:xyTimeslot()
-
 	x1 = x1 + startOffsetX + xo1 + ((slurDir == 'Upward' and startStem == 'Up' and startNotehead ~= 'Whole') and .75 or 0)
 	x2 = x2 + endOffsetX + xo2 - ((slurDir == 'Downward' and endStem == 'Down' and endNotehead ~= 'Whole') and .75 or 0)
 	local y1 = (slurDir == 'Upward') and startNoteYTop + startOffsetY + 2 or startNoteYBottom - startOffsetY - 2
 	local y2 = (slurDir == 'Upward') and endNoteYTop + endOffsetY + 2 or endNoteYBottom - endOffsetY - 2
 	local xa = (x1 + x2) / 2
 	ya = (y1 + y2) / 2 + ((slurDir == 'Upward') and ya or -ya)
-
 	nwcdraw.moveTo(x1, y1)
 	if t.Pen == 'solid' then
 		nwcdraw.setPen(t.Pen, 95)
@@ -96,6 +90,7 @@ end
 
 local function spin_Slur(t, d)
 	t.Span = t.Span + d
+	t.Span = t.Span
 end
 
 local function create_Slur(t)
