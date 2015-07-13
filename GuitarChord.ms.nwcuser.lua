@@ -10,11 +10,12 @@ local userObjTypeName = ...
 local userObj = nwc.ntnidx
 local user = nwcdraw.user
 local searchObj = nwc.ntnidx.new()
-local strumStyles = {'up', 'down'}
+local strumStyles = { 'up', 'down' }
+local fretTextPos = { 'top', 'bottom' }
 local strings = 6
 
 local spec_GuitarChord = {
-	Size = { type='float', default=1, min=0.5, max=5 },
+	Size = { type='float', default=1, min=0.5, max=5, step=.5 },
 	Frets = { type='int', default=4, min=1, max=10 },
 	Name = { type='text', default='' },
 	Finger = { type='text', default='' },
@@ -22,7 +23,7 @@ local spec_GuitarChord = {
 	Capo = { type='int', default=0, min=0 },
 	TopFret = { type='int', default=1, min=1 },
 	Span = { type='int', default=0, min=0 },
-	FretTextPosition = { type='enum', default='top', list={'top', 'bottom'} },
+	FretTextPosition = { type='enum', default='top', list=fretTextPos },
 	TopBarreOffset = { type='int', default=0, min=0 },
 	Strum = { type='enum', default='Up', list=strumStyles }
 }

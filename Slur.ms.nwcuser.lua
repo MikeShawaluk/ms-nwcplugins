@@ -15,7 +15,7 @@ local spec_Slur = {
 	Span = { type='int', default=2, min=2 },
 	Pen = { type='enum', default='solid', list=nwc.txt.DrawPenStyle },
 	Dir = { type='enum', default='Default', list=nwc.txt.TieDir },
-	Strength = { type='float', default=1, step=0.5 },
+	Strength = { type='float', default=1, min=0, max=10, step=0.5 },
 	StartOffsetX = { type='float', step=0.1, min=-100, max=100, default=0 },
 	StartOffsetY = { type='float', step=0.1, min=-100, max=100, default=0 },
 	EndOffsetX = { type='float', step=0.1, min=-100, max=100, default=0 },
@@ -94,14 +94,7 @@ local function spin_Slur(t, d)
 end
 
 local function create_Slur(t)
-	t.Span = t.Span
-	t.Pen = t.Pen
-	t.Dir = t.Dir
-	t.Strength = t.Strength
-	t.StartOffsetX = t.StartOffsetX
-	t.StartOffsetY = t.StartOffsetY
-	t.EndOffsetX = t.EndOffsetX
-	t.EndOffsetY = t.EndOffsetY
+
 end
 
 return {

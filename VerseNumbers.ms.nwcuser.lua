@@ -64,12 +64,6 @@ local spec_VerseNumbers = {
 
 local function create_VerseNumbers(t)
 	t.Class = t.Class
-	t.StartVerseNumber = t.StartVerseNumber
-	t.StartingVerse = t.StartingVerse
-	t.MaxVerses = t.MaxVerses
-	t.Separator = t.Separator
-	t.SpecialText = t.SpecialText
-	t.Punctuation = t.Punctuation
 end
 
 local function draw_VerseNumbers(t)
@@ -118,4 +112,4 @@ return {
 	create = create_VerseNumbers,
 	width = draw_VerseNumbers,
 	draw = draw_VerseNumbers
-	}
+}

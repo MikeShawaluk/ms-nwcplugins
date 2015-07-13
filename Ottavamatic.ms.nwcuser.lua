@@ -67,8 +67,8 @@ local function drawShift(drawpos1, drawpos2, extendingSection, endOfSection, shi
 	local y2 = shiftDir > 0 and y-h+d or y-d
 	x2 = math.max(x2, x1+w+1)
 	nwcdraw.moveTo(x1, y2)
-	if shiftDir > 0 then
-		local part1 = labelPrefix .. label:match('(%d+)')
+	if shiftDir > 0 and label:match('%d+') then
+		local part1 = labelPrefix .. (label:match('(%d+)') or '')
 		local part2 = label:match('(%a+)')
 		local part1Len = nwcdraw.calcTextSize(part1)
 		local part2Len = nwcdraw.calcTextSize(part2)
@@ -88,13 +88,6 @@ end
 
 local function create_Ottavamatic(t)
 	t.Class = t.Class
-	t.UpOneText = t.UpOneText
-	t.DownOneText = t.DownOneText
-	t.UpTwoText = t.UpTwoText
-	t.DownTwoText = t.DownTwoText
-	t.Courtesy = t.Courtesy
-	t.IncludeRests = t.IncludeRests
-	t.StaffTranspose = t.StaffTranspose
 end
 
 local function draw_Ottavamatic(t)

@@ -106,14 +106,7 @@ local function play_Arpeggio(t)
 end
 
 local function create_Arpeggio(t)
-	t.Offset = t.Offset
-	t.MarkerExtend = t.MarkerExtend
-	t.Side = t.Side
-	t.Dir = t.Dir
-	t.Anticipated = t.Anticipated
-	t.Speed = t.Speed
-	t.Play = t.Play
-	t.ForceArrow = t.ForceArrow
+
 end
 
 return {
