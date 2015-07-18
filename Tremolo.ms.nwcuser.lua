@@ -109,7 +109,10 @@ local function spin_Tremolo(t, dir)
 end
 
 local function create_Tremolo(t)
-
+	t.Beams = t.Beams
+	t.Play = t.Play
+	t.Style = t.Style
+	t.TripletPlayback = t.TripletPlayback
 end
 
 return {

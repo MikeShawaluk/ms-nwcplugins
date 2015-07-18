@@ -1,4 +1,4 @@
--- Version 0.9
+-- Version 0.91
 
 --[[----------------------------------------------------------------
 Arpeggio.ms
@@ -67,7 +67,7 @@ local function draw_Arpeggio(t)
 		y = y - 2
 	end
 	if t.Dir == 'down' then
-		drawArrow(x, ytop-count*2+1.9, -1)
+		drawArrow(x, ytop-count*2+1.85, -1)
 	else
 		if t.ForceArrow then
 			drawArrow(x+.2, ytop+1.85, 1)
@@ -106,7 +106,14 @@ local function play_Arpeggio(t)
 end
 
 local function create_Arpeggio(t)
-
+	t.Offset = t.Offset
+	t.MarkerExtend = t.MarkerExtend
+	t.Side = t.Side
+	t.Dir = t.Dir
+	t.Anticipated = t.Anticipated
+	t.Speed = t.Speed
+	t.Play = t.Play
+	t.ForceArrow = t.ForceArrow
 end
 
 return {

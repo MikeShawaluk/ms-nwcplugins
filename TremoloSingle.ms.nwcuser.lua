@@ -58,7 +58,10 @@ local spec_TremoloSingle = {
 }
 
 local function create_TremoloSingle(t)
-
+	t.Beams = t.Beams
+	t.Offset = t.Offset
+	t.Play = t.Play
+	t.TripletPlayback = t.TripletPlayback
 end
 
 local function play_TremoloSingle(t)

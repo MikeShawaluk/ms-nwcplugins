@@ -94,7 +94,14 @@ local function spin_Slur(t, d)
 end
 
 local function create_Slur(t)
-
+	t.Span = t.Span
+	t.Pen = t.Pen
+	t.Dir = t.Dir
+	t.Strength = t.Strength
+	t.StartOffsetX = t.StartOffsetX
+	t.StartOffsetY = t.StartOffsetY
+	t.EndOffsetX = t.EndOffsetX
+	t.EndOffsetY = t.EndOffsetY
 end
 
 return {

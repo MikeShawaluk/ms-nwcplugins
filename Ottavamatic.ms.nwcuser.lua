@@ -88,6 +88,13 @@ end
 
 local function create_Ottavamatic(t)
 	t.Class = t.Class
+	t.UpOneText = t.UpOneText
+	t.DownOneText = t.DownOneText
+	t.UpTwoText = t.UpTwoText
+	t.DownTwoText = t.DownTwoText
+	t.Courtesy = t.Courtesy
+	t.IncludeRests = t.IncludeRests
+	t.StaffTranspose = t.StaffTranspose
 end
 
 local function draw_Ottavamatic(t)
