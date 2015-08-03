@@ -1,9 +1,53 @@
--- Version 0.9
+-- Version 0.95
 
 --[[----------------------------------------------------------------
-GuitarChord.ms
+This plugin draw a guitar chord chart and optionally strums the chord when the song is played. 
+A variety of notation is shown, including the chord name, open and excluded strings, barre 
+positions, fret position and optional finger numbers.
 
-This will draw and play guitar chords.
+When adding a new chord, the user can choose from 35 predefined chords, or can choose "(Custom)" to create a chord chart from scratch. The chord chart can be positioned vertical by changing the object marker position.
+@Name
+The name of the chord, entered as free text. It is displayed using the MusikChordSerif font, 
+which renders 'b' and '#' as flat and sharp symbols.
+@Finger
+The fingerings for each string, entered from low to high string, separate by spaces. Each 
+position can be a number, indicating the fret position, or a 'o' or 'x' for open or unplayed 
+strings, respectively. A fret position can be appended with ':' and a number, to indicate the 
+finger number to be used for that string; the number will be placed inside the fingering dot.
+
+When finger numbers are being used, the chart size will generally need to be 2 or larger for the
+numbers to be readable.
+@Barre
+Optional sets of strings to be held down by a particular finger, displayed by an arc over the 
+fingering dots. Each barre to be drawn is indicated by the starting and ending string numbers, 
+separated by ':'. For example, 2:5 would add a bar between the second and fifth strings.
+
+Note that the fingering positions for a barre need to be on the same fret for it to appear 
+correctly.
+@Size
+The size of the chord chart, ranging from 1 to 5. The default is 1.
+@Frets
+The number of fret positions to show in the chart, ranging from 1 to 10. The default is 4.
+@Capo
+For playback, indicates that the pitch for each string should be transposed upward the 
+specified number of steps. The default is 0.
+@TopFret
+The top fret number displayed in the chart. When the value is 1, the top border of the chart 
+will be thicker. For larger values, '# fr.' will be displayed to the right of the chart. The 
+default is 1.
+@Span
+For playback, the number of notes/rests that the chord should span. A value of 0 will disable 
+playback. The default is 0.
+@FretTextPosition
+Specifies whether the fret text is displayed next to the top or bottom row of fingering dots, 
+when Top Fret is greater than 1. The default is top.
+@Strum
+For playback, the direction in which the chord is strummed: down (low- to high-pitched strings) 
+or up (high- to low-pitched strings). The default is down.
+@TopBarreOffset
+When a barre is present on the top fret and there are open (o) or excluded (x) strings within 
+the barre, this setting can be used to move the barre upward a specified distance, to avoid 
+collision with those labels. This will also move the Chord Name upward. The default value is 0.
 --]]----------------------------------------------------------------
 
 local userObjTypeName = ...
@@ -15,17 +59,17 @@ local fretTextPos = { 'top', 'bottom' }
 local strings = 6
 
 local spec_GuitarChord = {
-	Size = { type='float', default=1, min=0.5, max=5, step=.5 },
-	Frets = { type='int', default=4, min=1, max=10 },
-	Name = { type='text', default='' },
-	Finger = { type='text', default='' },
-	Barre = { type='text', default='' },
-	Capo = { type='int', default=0, min=0 },
-	TopFret = { type='int', default=1, min=1 },
-	Span = { type='int', default=0, min=0 },
-	FretTextPosition = { type='enum', default='top', list=fretTextPos },
-	TopBarreOffset = { type='int', default=0, min=0 },
-	Strum = { type='enum', default='Up', list=strumStyles }
+	{ id='Name', label='Chord Name', type='text', default='' },
+	{ id='Finger', label='Fingerings', type='text', default='' },
+	{ id='Barre', label='Barres', type='text', default='' },
+	{ id='Size', label='Chart Size', type='float', default=1, min=0.5, max=5, step=.5 },
+	{ id='Frets', label='Frets to Show', type='int', default=4, min=1, max=10 },
+	{ id='Capo', label='Capo Position', type='int', default=0, min=0 },
+	{ id='TopFret', label='Top Fret', type='int', default=1, min=1 },
+	{ id='Span', label='Note Span', type='int', default=0, min=0 },
+	{ id='FretTextPosition', label='Fret Text Location', type='enum', default='top', list=fretTextPos },
+	{ id='Strum', label='Strum Direction', type='enum', default='down', list=strumStyles },
+	{ id='TopBarreOffset', label='Top Barre Offset', type='float', default=0, min=0, step=.5 }
 }
 
 local commonChords = {
@@ -75,20 +119,10 @@ local function create_GuitarChord(t)
 	table.sort(chordNames)
 	local chord = nwcui.prompt('Select a Chord','|' .. table.concat(chordNames,'|'))
 	if not chord then return end
-	t.Name = chord
+	t.Name = (chord == '(Custom)') and '' or chord
 	t.Finger = commonChords[chord][1]
 	t.Barre = commonChords[chord][2]
 	t.TopFret = commonChords[chord][3]
-	local promptTxt = nwcui.prompt('Strum Style','|Unchanged|'..table.concat(strumStyles,'|'))
-	if promptTxt ~= 'Unchanged' then
-		t.Strum = promptTxt
-	end
-	if (not searchObj:find('first','user',userObjTypeName)) or (searchObj >= userObj) then
-		t.Size = t.Size
-		t.Frets = t.Frets
-	end
-	t.Capo = t.Capo
-	t.Span = t.Span
 end
 
 local function spin_GuitarChord(t, dir)
@@ -105,35 +139,17 @@ local function hasTargetDuration()
 	return false
 end
 
-local function getDrawSettings(t)
-	local useSize, useFrets
-	if searchObj:find('first','user',userObjTypeName) and (searchObj < userObj) then
-		if not nwc.isset(t,'Size') then
-			useSize = tonumber(searchObj:userProp('Size'))
-		end
-		if not nwc.isset(t,'Frets') then
-			useFrets = tonumber(searchObj:userProp('Frets'))
-		end
-	end
-	if not useSize then useSize = t.Size end
-	if not useFrets then useFrets = t.Frets end
-	return useSize, useFrets
-end	
-
 local function width_GuitarChord(t)
-	local size = getDrawSettings(t)
-	return hasTargetDuration() and 0 or strings * size / nwcdraw.getAspectRatio()
+	return hasTargetDuration() and 0 or strings * t.Size / nwcdraw.getAspectRatio()
 end
 
 local function draw_GuitarChord(t)
+	local _, my = nwcdraw.getMicrons()
 	local xyar = nwcdraw.getAspectRatio()
-	local size, frets = getDrawSettings(t)
-	local topFret = t.TopFret
-	local topBarreOffset = t.TopBarreOffset
-	local span = t.Span
+	local size, frets, topFret, topBarreOffset, span = t.Size, t.Frets, t.TopFret, t.TopBarreOffset, t.Span
 	local penStyle = 'solid'
-	local lineThickness = 100 * size
-	local barreThickness = 80 * size
+	local lineThickness = my*0.125*size
+	local barreThickness = my*0.1*size
 	local xspace, yspace = size / xyar, size
 	local height = yspace * frets
 	local height2 = (topFret == 1) and height + .5 * yspace or height
@@ -157,6 +173,15 @@ local function draw_GuitarChord(t)
 	end
 	for i = 0, frets do
 		nwcdraw.line(xoffset, i * yspace, xoffset + width, i * yspace)
+	end
+	if topFret == 1 then
+		nwcdraw.moveTo(xoffset, height)
+		nwcdraw.beginPath()
+		nwcdraw.line(xoffset, height2)
+		nwcdraw.line(xoffset+width, height2)
+		nwcdraw.line(xoffset+width, height)
+		nwcdraw.closeFigure()
+		nwcdraw.endPath()
 	end
 	nwcdraw.moveTo(offset/2, height + 2 * yspace + tbo)
 	nwcdraw.setFont(chordFontFace, chordFontSize)
@@ -218,12 +243,6 @@ local function draw_GuitarChord(t)
 			nwcdraw.moveTo(xoffset + width + .5 * xspace, height - (whichFret - topFret + 1) * yspace)
 			nwcdraw.text(tostring(whichFret) .. ' fr.')
 		end
-	else
-		nwcdraw.moveTo(xoffset, height2)
-		nwcdraw.beginPath()
-		nwcdraw.rectangle(width, .5 * yspace)
-		nwcdraw.closeFigure()
-		nwcdraw.endPath()
 	end
 	if hasTarget then
 		user:reset()
@@ -239,21 +258,9 @@ local function draw_GuitarChord(t)
 	end
 end
 
-local function getPerformanceProperty(t, propName)
-	if not nwc.isset(t, propName) then
-		searchObj:reset()
-		if searchObj:find('prior', 'user', userObjTypeName, propName) then
-			return searchObj:userProp(propName)
-		end
-	end
-	return t[propName]
-end
-
 local function play_GuitarChord(t)
 	if not hasTargetDuration() then return end
-	local span = t.Span
-	local capo = t.Capo
-	local strum = getPerformanceProperty(t, 'Strum')
+	local span, capo, strum = t.Span, t.Capo, t.Strum
 	local stringNotes = {40, 45, 50, 55, 59, 64}
 	local k = {}
 	local stringNum = 1
@@ -278,7 +285,7 @@ local function play_GuitarChord(t)
 		local arpeggioShift = math.min(duration, nwcplay.PPQ)/12
 		local thisShift = 0
 		for i, v in ipairs(k) do
-			local thisShift = arpeggioShift * ((strum == 'down') and (noteCount-i) or i)
+			local thisShift = arpeggioShift * ((strum == 'down') and i or noteCount-i)
 			nwcplay.note(thisShift, duration-thisShift, v + capo)
 		end
 	end

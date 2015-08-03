@@ -1,10 +1,32 @@
--- Version 0.9
+-- Version 0.95
 
 --[[----------------------------------------------------------------
-Slur.ms
+This plugin draws a solid, dashed or dotted slur with adjustable end point positions and curve shape. It can be used for special situations where a normal slur does not work well, such as a slur-within-a-slur, or for 
+"conditional" slurs for different verses on a vocal staff. This object is ornamental only, and does not affect playback.
 
-Draws solid, dashed or dotted slurs with adjustable end point offsets and strength
+To add a slur, insert the user object immediately before the note/chord where you want the slur to start. The slur object will detect the starting and ending chords' position, duration, stem direction and slur direction 
+settings, and will determine curvature strength, direction and end points that are appropriate for most situations. These settings can be overridden by use of various parameters.
+@Span
+The number of notes/chords to include in the slur. The minimum value is 2, which is the default setting.
+@Pen
+The type of line to draw for the slur: solid, dash or dot. The solid line type will create a shaped Bezier curve that is thinner at the end points, similar in appearance to regular NWC slurs. The dot and dash line types are 
+drawn with a uniform line thickness. The default value is solid.
+@Dir
+The direction of the slur: Default, Upward or Downward. When set to Default, the slur will take its direction from the starting note's Slur Direction property, which in turn is based on the stem directions of the starting 
+and ending notes. When set to Upward or Downward, the slur direction is set explicitly.
 
+Note that upward slurs are positioned at the top notes of the starting and ending chords, while downward slurs are positioned at the bottom notes.
+@StartOffsetX
+This will adjust the auto-determined horizontal (X) position of the slur's start point. The range of values is -100 to 100. The default setting is 0.
+@StartOffsetY
+This will adjust the auto-determined vertical (Y) position of the slur's start point. The range of values is -100 to 100. The default setting is 0.
+@EndOffsetX
+This will adjust the auto-determined horizontal (X) position of the slur's end point. The range of values is -100 to 100. The default setting is 0.
+@EndOffsetY
+This will adjust the auto-determined vertical (Y) position of the slur's end point. The range of values is -100 to 100. The default setting is 0.
+@Strength
+This will adjust the strength (shape) of the curve. The range of values is 0 to 10, where a value of 1 is the auto-determined curve strength. Lower values will result in a shallower curve, and stronger values a steeper curve. 
+A value of 0 results in a straight line. The default setting is 1.
 --]]----------------------------------------------------------------
 
 local user = nwcdraw.user
@@ -12,14 +34,14 @@ local startNote = nwc.drawpos.new()
 local endNote = nwc.drawpos.new()
 
 local spec_Slur = {
-	Span = { type='int', default=2, min=2 },
-	Pen = { type='enum', default='solid', list=nwc.txt.DrawPenStyle },
-	Dir = { type='enum', default='Default', list=nwc.txt.TieDir },
-	Strength = { type='float', default=1, min=0, max=10, step=0.5 },
-	StartOffsetX = { type='float', step=0.1, min=-100, max=100, default=0 },
-	StartOffsetY = { type='float', step=0.1, min=-100, max=100, default=0 },
-	EndOffsetX = { type='float', step=0.1, min=-100, max=100, default=0 },
-	EndOffsetY = { type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='Span', label='Note Span', type='int', default=2, min=2 },
+	{ id='Pen', label='Line Type', type='enum', default='solid', list=nwc.txt.DrawPenStyle },
+	{ id='Dir', label='Direction', type='enum', default='Default', list=nwc.txt.TieDir },
+	{ id='StartOffsetX', label='Start Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='StartOffsetY', label='Start Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='EndOffsetX', label='End Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='EndOffsetY', label='End Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='Strength', label='Strength', type='float', default=1, min=0, max=10, step=0.5 },
 }
 
 local function noteStuff(item)
@@ -48,6 +70,8 @@ local function noteStuff(item)
 end
 
 local function draw_Slur(t)
+	local _, my = nwcdraw.getMicrons()
+	local solidPenWidth, dotDashPenWidth = my*0.12, my*.375
 	local span = t.Span
 	local pen = t.Pen
 	local dir = t.Dir
@@ -77,13 +101,14 @@ local function draw_Slur(t)
 	ya = (y1 + y2) / 2 + ((slurDir == 'Upward') and ya or -ya)
 	nwcdraw.moveTo(x1, y1)
 	if t.Pen == 'solid' then
-		nwcdraw.setPen(t.Pen, 95)
+		local bw = startNote:isGrace() and .2 or .3
+		nwcdraw.setPen(t.Pen, solidPenWidth)
 		nwcdraw.beginPath()
-		nwcdraw.bezier(xa, ya+.3, x2, y2)
-		nwcdraw.bezier(xa, ya-.3, x1, y1)
-		nwcdraw.endPath('strokeandfill')
+		nwcdraw.bezier(xa, ya+bw, x2, y2)
+		nwcdraw.bezier(xa, ya-bw, x1, y1)
+		nwcdraw.endPath()
 	else
-		nwcdraw.setPen(t.Pen, 300)
+		nwcdraw.setPen(t.Pen, dotDashPenWidth)
 		nwcdraw.bezier(xa, ya, x2, y2)
 	end
 end
@@ -93,20 +118,8 @@ local function spin_Slur(t, d)
 	t.Span = t.Span
 end
 
-local function create_Slur(t)
-	t.Span = t.Span
-	t.Pen = t.Pen
-	t.Dir = t.Dir
-	t.Strength = t.Strength
-	t.StartOffsetX = t.StartOffsetX
-	t.StartOffsetY = t.StartOffsetY
-	t.EndOffsetX = t.EndOffsetX
-	t.EndOffsetY = t.EndOffsetY
-end
-
 return {
 	spec = spec_Slur,
-	create = create_Slur,
 	spin = spin_Slur,
 	draw = draw_Slur
 }

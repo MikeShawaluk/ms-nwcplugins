@@ -1,31 +1,47 @@
--- Version 0.9
+-- Version 0.95
 
 --[[----------------------------------------------------------------
-Tremolo.ms
+This plugin creates two-note tremolo markings. It draws the markings, and will optionally play the notes in tremolo style.
 
-This object will add tremolo markings to (and optionally play) a pair of RestChords of the proper duration. The object should be placed between
-the notes which comprise the tremolo. Also, the rest portion of each RestChord should be marked as hidden.
+To create a tremolo, first create two RestChords of the desired duration. For whole, half and quarter note tremolos, the rest duration should be half 
+of the note's duration. For eighth tremolos, the note duration should be quarter and the rest duration sixteenth. Also, the RestChords' "Show Rest" property should be unchecked.
+Insert the tremolo object between the RestChords, and the markings will be drawn between them. 
 
+For whole note tremolos, the beams can be positioned by moving the tremolo object marker vertically.
+For stemmed tremolos, if additional space is needed to accommodate a larger number of beams, increase the notes' stem lengths.
+@Beams
+The number of beams to be drawn between the notes, between 1 and 4. The default setting is 3.
+
+For playback, the number of beams determines the frequency and number of notes to be played.
+
+The number of beams for a tremolo can be modified by highlighting the object and pressing the + or - keys.
+@Style
+Specifies one of three styles for half-note tremolos; it is ignored for other tremolo durations. The range of values is 1 to 3, and the default setting is 1.
+@Play
+Enables playback of the tremolo. The default setting is enabled (checked).
+
+Note that the tremolo RestChords should be muted for proper playback.
+@TripletPlayback
+Specifies that the playback notes should be in triplet rhythm. This will generally be used when the tremolo notes are dotted. The default setting is disabled (unchecked).
 --]]----------------------------------------------------------------
 
 local user = nwcdraw.user
 local nextNote = nwc.drawpos.new()
 local priorNote = nwc.drawpos.new()
-local nextNotePlay = nwc.ntnidx.new()
-local priorNotePlay = nwc.ntnidx.new()
 
 local spec_Tremolo = {
-	Beams = { type='int', default=3, min=1, max=4 },
-	Play = { type='bool', default=true },
-	Style = { type='int', default=1, min=1, max=3 },
-	TripletPlayback = { type='bool', default=false }
+	{ id='Beams', label='Number of Beams', type='int', default=3, min=1, max=4 },
+	{ id='Style', label='Half Note Beam Style', type='int', default=1, min=1, max=3 },
+	{ id='Play', label='Play Notes', type='bool', default=true },
+	{ id='TripletPlayback', label='Triplet Playback', type='bool', default=false }
 }
 
 local function draw_Tremolo(t)
+	local _, my = nwcdraw.getMicrons()
+	local stemWeight = my*0.0126
 	local beams = t.Beams
 	local style = t.Style
 	local yu = user:staffPos()
-	local stemWeight = nwcdraw.getMicrons() / 195
 	local beamHeight, beamSpacing, beamOffset = .8, 1.8, .6
 	nwcdraw.setPen('solid', stemWeight)	
 	if not nextNote:find('next','note') then return end
@@ -76,30 +92,20 @@ local function draw_Tremolo(t)
 	end
 end
 
+local _play = {nwc.ntnidx.new(), nwc.ntnidx.new()}
 local function play_Tremolo(t)
 	if not t.Play then return end
-	if not nextNotePlay:find('next', 'note') then return end
-	if nextNotePlay:objType() ~= 'RestChord' then return end
-	if not priorNotePlay:find('prior', 'note') then return end
-	if priorNotePlay:objType() ~= 'RestChord' then return end
-	local beams = t.Beams
-	local ncp, ncn = priorNotePlay:noteCount(), nextNotePlay:noteCount()
-	nextNotePlay:find('next')
-	local sppEnd = nextNotePlay:sppOffset()
-	nextNotePlay:reset()
-	nextNotePlay:find('next', 'note')
-	local spp = priorNotePlay:sppOffset()
-	local noteDur = nwcplay.PPQ / 2^beams
-	if t.TripletPlayback then noteDur = noteDur * 2/3 end
-	while spp < sppEnd do
-		for i=1, ncp do
-			nwcplay.note(spp, noteDur, nwcplay.getNoteNumber(priorNotePlay:notePitchPos(i)))
+	local dur = nwcplay.PPQ / 2^t.Beams * (t.TripletPlayback and 2/3 or 1)
+	_play[2]:find('next', 'note')
+	_play[2]:find('next')
+	local fini, i = _play[2]:sppOffset() - 1
+	_play[1]:find('prior', 'note')
+	_play[2]:find('prior')
+	for spp = _play[1]:sppOffset(), fini, dur do
+		i = i==1 and 2 or 1
+		for j = 1, _play[i]:noteCount() or 0 do 
+			nwcplay.note(spp, dur, nwcplay.getNoteNumber(_play[i]:notePitchPos(j)))
 		end
-		spp = spp + noteDur
-		for i=1, ncn do
-			nwcplay.note(spp, noteDur, nwcplay.getNoteNumber(nextNotePlay:notePitchPos(i)))
-		end
-		spp = spp + noteDur
 	end
 end
 
@@ -108,17 +114,9 @@ local function spin_Tremolo(t, dir)
 	t.Beams = t.Beams
 end
 
-local function create_Tremolo(t)
-	t.Beams = t.Beams
-	t.Play = t.Play
-	t.Style = t.Style
-	t.TripletPlayback = t.TripletPlayback
-end
-
 return {
-	create = create_Tremolo,
-	spin = spin_Tremolo,
 	spec = spec_Tremolo,
+    spin = spin_Tremolo,
 	draw = draw_Tremolo,
 	play = play_Tremolo
 }
