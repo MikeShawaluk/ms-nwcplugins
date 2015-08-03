@@ -1,11 +1,22 @@
--- Version 0.9
+-- Version 0.95
 
 --[[----------------------------------------------------------------
-VerseNumbers.ms
+This plugin will add verse numbers to lyrics on a staff. The numbers will be drawn using the current "StaffLyric" font, to match the size and style of the lyrics. The verse numbers can appear just once,
+or will appear on successive systems when Class is set to StaffSig.
 
-This object will add verse numbers for specified lyric lines. If it is added as a staff signature object, it will
-also add them to subsequent systems.
-
+Each verse number will be positioned right-justified before the first lyric-bearing note or rest that follows the object. The verse numbers are vertically aligned based on the widest syllable.
+@StartVerseNumber
+The starting point for numbering the verses. The default setting is 1.
+@StartingVerse
+The number of the first lyric line to receive a number. The range of values is 1 to 8, and the default setting is 1.
+@MaxVerses
+The number of the last lyric line to receive a number. The range of values is either 'All', or a number from 1 to 8. The default setting is 'All'.
+@Separator
+Inserts a short horizontal separator line between the verse numbers every 'n' lyric lines. The default setting is 'Off'.
+@SpecialText
+Allows a user-specified series of verse labels to be used instead of ascending numbers. To use this, enter the individual labels, separated by spaces. The default setting is an empty string, which disables this option.
+@Punctuation
+Text to append to each verse number. The default setting is ". " (a period followed by a single space)
 --]]----------------------------------------------------------------
 
 local userObjTypeName = ...
@@ -14,20 +25,29 @@ local nextVerseNumObj = nwc.ntnidx.new()
 local showInTargets = {edit=1, selector=1}
 
 local function doPrintName(showAs)
-	nwcdraw.setFont('Arial', 3, 'b')
+	nwcdraw.setFont('Tahoma', 3, 'r')
+
 	local xyar = nwcdraw.getAspectRatio()
 	local w, h = nwcdraw.calcTextSize(showAs)
-	local w_adj, h_adj = h/xyar, (w*xyar)+2
-	if not nwcdraw.isDrawing() then return w_adj end
-	nwcdraw.alignText('bottom', 'left')
+	local w_adj, h_adj = (h/xyar), (w*xyar)+3
+	if not nwcdraw.isDrawing() then return w_adj+.2 end
+
+	for i=1, 2 do
+		nwcdraw.moveTo(-w_adj/2, 0)
+		if i == 1 then
+			nwcdraw.setWhiteout()
+			nwcdraw.beginPath()
+		else
+			nwcdraw.endPath('fill')
+			nwcdraw.setWhiteout(false)
+			nwcdraw.setPen('solid', 150)
+		end
+		nwcdraw.roundRect(w_adj/2, h_adj/2, w_adj/2, 1)
+	end
+
+	nwcdraw.alignText('bottom', 'center')
 	nwcdraw.moveTo(0, 0)
-	nwcdraw.beginPath()
-	nwcdraw.rectangle(-w_adj, -h_adj)
-	nwcdraw.endPath('fill')
-	nwcdraw.moveTo(0, 0.5)
-	nwcdraw.setWhiteout()
 	nwcdraw.text(showAs, 90)
-	nwcdraw.setWhiteout(false)
 	return 0
 end
 
@@ -51,32 +71,29 @@ local function findLyricPos(o)
 end
 
 local function iterateMethod(o, f, i) return function() i = (i or 0)+1 return o[f](o, i) end end
+local startingVerseList = { '1', '2', '3', '4', '5', '6', '7', '8' }
+local maxVerseList = { 'All', '1', '2', '3', '4', '5', '6', '7', '8' }
+local separatorList = { 'Off', '1', '2', '3', '4', '5', '6', '7', '8' }
 
 local spec_VerseNumbers = {
-	Class = { type='text', default='StaffSig' },
-	StartVerseNumber = { type='int', default=1, min=1, max=99 },
-	StartingVerse = { type='int', default=1, min=1, max=8 },
-	MaxVerses = { type='int', default=0, min=0, max=8 },
-	Separator = { type='int', default=0, min=0, max=8 },
-	SpecialText = { type='text', default='' },
-	Punctuation = { type='text', default='. ' }
+	{ id='StartVerseNumber', label='Start Verse Number', type='int', default=1, min=1, max=99 },
+	{ id='StartingVerse', label='Starting Verse', type='enum', default=startingVerseList[1], list=startingVerseList },
+	{ id='MaxVerses', label='Maximum Verses', type='enum', default=maxVerseList[1], list=maxVerseList },
+	{ id='Separator', label='Separator Position', type='enum', default=separatorList[1], list=separatorList },
+	{ id='SpecialText', label='Special Text', type='text', default='' },
+	{ id='Punctuation', label='Punctuation', type='text', default='. ' }
 }
 
 local function create_VerseNumbers(t)
-	t.Class = t.Class
-	t.StartVerseNumber = t.StartVerseNumber
-	t.StartingVerse = t.StartingVerse
-	t.MaxVerses = t.MaxVerses
-	t.Separator = t.Separator
-	t.SpecialText = t.SpecialText
-	t.Punctuation = t.Punctuation
+	t.Class = 'StaffSig'
+	t.Pos = 0
 end
 
 local function draw_VerseNumbers(t)
 	local media = nwcdraw.getTarget()
 	local w = 0;
 	if showInTargets[media] and not nwcdraw.isAutoInsert() then
-		w = doPrintName(userObjTypeName)
+		w = doPrintName('VerseNumbers')
 	end
 	if not nwcdraw.isDrawing() then return w end
 	if drawpos:isHidden() then return end
@@ -84,11 +101,17 @@ local function draw_VerseNumbers(t)
 	if nextVerseNumObj:find('next', 'user', userObjTypeName) then
 		if nextVerseNumObj < drawpos then return end
 	end
+    local mx, my = nwcdraw.getMicrons()
+	local penWidth = my*.189
+	nwcdraw.setPen('solid', penWidth)
 	local st = csplit(t.SpecialText, ' ')
 	nwcdraw.alignText('middle', 'right')
 	nwcdraw.setFontClass('StaffLyric')
 	local _, hs = nwcdraw.calcTextSize(' ')
-	local s, svn, mv, sv = t.Separator, t.StartVerseNumber, t.MaxVerses, t.StartingVerse
+	local svn = t.StartVerseNumber
+	local sv = tonumber(t.StartingVerse)
+	local s = tonumber(t.Separator) or 0
+	local mv = tonumber(t.MaxVerses) or 0
 	local r = 0
 	local xm = math.huge
 	for lt, sep in iterateMethod(drawpos, 'lyricSyllable') do
