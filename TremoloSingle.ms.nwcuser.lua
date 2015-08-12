@@ -1,9 +1,10 @@
--- Version 0.95
+-- Version 0.96
 
 --[[----------------------------------------------------------------
 This object creates a single note tremolo marking. It draws the markings, and will optionally play the note in tremolo style.
 
-To create the tremolo, insert the object immediately before the note to receive the tremolo, and the marking will be drawn on the note's stem, or above/below a whole note. The note can be any chord or RestChord.
+To create the tremolo, insert the object immediately before the note to receive the tremolo, and the marking 
+will be drawn on the note's stem, or above/below a whole note. The note can be any chord or RestChord.
 If additional space is needed to accommodate a larger number of beams, increase the note's stem length.
 @Beams
 The number of beams to be drawn, between 1 and 4. The default setting is 3.
@@ -12,17 +13,19 @@ For playback, the number of beams determines the frequency and number of notes t
 
 The number of beams for a tremolo can be modified by highlighting the object and pressing the + or - keys.
 @Offset
-This allows the distance between the notehead and tremolo beams to be adjusted. Positive values move the beams toward the note head, negative values away from the note head. The default setting is 0.
+This allows the distance between the notehead and tremolo beams to be adjusted. The value can be between -5.00 and 5.00. 
+Positive values move the beams toward the note head, negative values away from the note head. The default setting is 0.
 @Play
 Enables playback of the tremolo. The default setting is enabled (checked).
 
 Note that the tremolo note should be muted for proper playback.
 @TripletPlayback
-Specifies that the playback notes should be in triplet rhythm. This will generally be used when the tremolo notes are dotted. The default setting is disabled (unchecked).
+Specifies that the playback notes should be in triplet rhythm. This will generally be used when the tremolo 
+notes are dotted. The default setting is disabled (unchecked).
 --]]----------------------------------------------------------------
 
 local user = nwcdraw.user
-local durations = { ['Eighth']=1, ['Sixteenth']=2, ['Thirtysecond']=3, ['Sixtyfourth']=4 }
+local durations = { Eighth=1, Sixteenth=2, Thirtysecond=3, Sixtyfourth=4 }
 
 local function draw_TremoloSingle(t)
 	local _, my = nwcdraw.getMicrons()

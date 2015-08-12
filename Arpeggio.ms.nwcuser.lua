@@ -2,10 +2,12 @@
 
 --[[----------------------------------------------------------------
 This plugin draws an arpeggio marking next to a chord, and can optionally play the notes in 
-several performance styles when the song is played. Parameters 
-are available for adjusting the arpeggio's appearance and playback.
+several performance styles when the song is played. Parameters are available for adjusting the 
+arpeggio's appearance and playback.
 
-To add an arpeggio, insert the object immediately before the chord which you wish to ornament. The arpeggio will automatically cover the range of notes in the chord, and will update automatically if the chord is moved or modified.
+To add an arpeggio, insert the object immediately before the chord which you wish to ornament. 
+The arpeggio will automatically cover the range of notes in the chord, and will update automatically 
+if the chord is moved or modified.
 @Side
 The side of the chord on which the arpeggio marking will be drawn. The default setting is left. 
 @Dir
@@ -14,10 +16,10 @@ bottom of the arpeggio. This setting also affects the arpeggio's playback. The d
 is up. 
 @Offset
 This is used to increase or decrease the spacing between the arpeggio and its chord, and can be 
-from -5 to 5 notehead widths. Positive values shift the position to the right, negative to the 
+from -5.00 to 5.00 notehead widths. Positive values shift the position to the right, negative to the 
 left. The default setting is 0. 
 @Speed
-The rate at which the arpeggio is played. The range of values is 1 (very slow) to 128 (very 
+The rate at which the arpeggio is played. The range of values is 1.0 (very slow) to 128.0 (very 
 fast), with a default setting of 32. 
 
 Note that the arpeggio rate is proportional to the score's tempo. 
@@ -25,7 +27,11 @@ Note that the arpeggio rate is proportional to the score's tempo.
 This specifies that the arpeggio should anticipate (precede) the chord, so that the final 
 played note occurs on the chord's beat position. When unchecked, standard playback with occur, 
 in which the first played note of the arpeggiated chord is at the chord's beat position. The 
-default setting is off (unchecked). 
+default setting is off (unchecked).
+
+Note that if playback begins with an anticipated arpeggio, it will play in the
+normal style, since attempting to begin its playback before the start of the score, or before
+the user presses the Play button, could result in a causality violation.
 @MarkerExtend
 This setting allows the arpeggio marker's position to be used to extends it above or below the 
 notes of the chord. This can be used to 'stretch' the arpeggio to extend to an adjacent staff. 
@@ -34,7 +40,9 @@ setting is off (unchecked).
 @Play
 Determines whether arpeggio playback is enabled. The default setting is true (checked). 
 
-Note that the associated chord should be muted for proper playback. 
+Note that the chord which follows the arpeggio marking should be muted for proper playback. When
+this chord is tied to subsequent chords, those chords should *NOT* be muted. This will allow the
+arpeggiated chord to play through the tie.
 @ForceArrow
 This forces the addition of the direction arrowhead for upward arpeggios. Normally, arrowheads 
 are only used for downward arpeggios, but one can be added for an upward arpeggio if needed in 
@@ -72,7 +80,7 @@ local spec_Arpeggio = {
 	{ id='Side', label='Side of Chord', type='enum', default='left', list={'left', 'right'} },
 	{ id='Dir', label='Direction', type='enum', default='up', list={'up', 'down'} },
 	{ id='Offset', label='Horizontal Offset', type='float', default=0, min=-5, max=5, step=.1 },
-	{ id='Speed', label='Playback Speed', type='int', default=32, min=1, max=128 },
+	{ id='Speed', label='Playback Speed', type='float', default=32, min=1, max=128 },
 	{ id='Anticipated', label='Anticipated Playback', type='bool', default=false },
 	{ id='MarkerExtend', label='Extend Arpeggio with Marker', type='bool', default=false },
 	{ id='Play', label='Play Notes', type='bool', default=true },

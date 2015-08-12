@@ -7,6 +7,9 @@ To create a tremolo, first create two RestChords of the desired duration. For wh
 of the note's duration. For eighth tremolos, the note duration should be quarter and the rest duration sixteenth. Also, the RestChords' "Show Rest" property should be unchecked.
 Insert the tremolo object between the RestChords, and the markings will be drawn between them. 
 
+Note that if either of the notes/chords are not RestChords, or if their stems are in opposite directions, the tremolo markings will not be drawn.
+However, they will still play in tremolo style if Play Notes is checked.
+
 For whole note tremolos, the beams can be positioned by moving the tremolo object marker vertically.
 For stemmed tremolos, if additional space is needed to accommodate a larger number of beams, increase the notes' stem lengths.
 @Beams

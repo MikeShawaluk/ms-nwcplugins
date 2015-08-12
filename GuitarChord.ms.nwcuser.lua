@@ -1,4 +1,4 @@
--- Version 0.95
+-- Version 0.96
 
 --[[----------------------------------------------------------------
 This plugin draw a guitar chord chart and optionally strums the chord when the song is played. 
@@ -7,8 +7,11 @@ positions, fret position and optional finger numbers.
 
 When adding a new chord, the user can choose from 35 predefined chords, or can choose "(Custom)" to create a chord chart from scratch. The chord chart can be positioned vertical by changing the object marker position.
 @Name
-The name of the chord, entered as free text. It is displayed using the MusikChordSerif font, 
-which renders 'b' and '#' as flat and sharp symbols.
+The name of the chord. It is displayed using a font which displays 'b' and '#' as flat and sharp symbols.
+@Style
+This determines the font style to be used for the chord name and label text. The possible values
+are Serif (MusikChordSerif, Times New Roman), Sans (MusikChordSans, Arial) and Swing (SwingChord, SwingText).
+The default setting is Serif.
 @Finger
 The fingerings for each string, entered from low to high string, separate by spaces. Each 
 position can be a number, indicating the fret position, or a 'o' or 'x' for open or unplayed 
@@ -25,7 +28,7 @@ separated by ':'. For example, 2:5 would add a bar between the second and fifth 
 Note that the fingering positions for a barre need to be on the same fret for it to appear 
 correctly.
 @Size
-The size of the chord chart, ranging from 1 to 5. The default is 1.
+The size of the chord chart, ranging from 1.0 to 5.0. The default is 1.
 @Frets
 The number of fret positions to show in the chart, ranging from 1 to 10. The default is 4.
 @Capo
@@ -47,7 +50,7 @@ or up (high- to low-pitched strings). The default is down.
 @TopBarreOffset
 When a barre is present on the top fret and there are open (o) or excluded (x) strings within 
 the barre, this setting can be used to move the barre upward a specified distance, to avoid 
-collision with those labels. This will also move the Chord Name upward. The default value is 0.
+collision with those labels. This will also move the Chord Name upward. The default value is 0.0.
 --]]----------------------------------------------------------------
 
 local userObjTypeName = ...
@@ -56,10 +59,18 @@ local user = nwcdraw.user
 local searchObj = nwc.ntnidx.new()
 local strumStyles = { 'up', 'down' }
 local fretTextPos = { 'top', 'bottom' }
+local styleListFull = {
+    Serif = { 'MusikChordSerif', 1, 'Times New Roman', 1 },
+    Sans = { 'MusikChordSans', 1, 'Arial', 1 },
+    Swing = { 'SwingChord', 1.25, 'SwingText', 1.25 }
+}
+local styleList = { 'Serif', 'Sans', 'Swing' }
+
 local strings = 6
 
 local spec_GuitarChord = {
 	{ id='Name', label='Chord Name', type='text', default='' },
+    { id='Style', label='Font Style', type='enum', default=styleList[1], list=styleList },
 	{ id='Finger', label='Fingerings', type='text', default='' },
 	{ id='Barre', label='Barres', type='text', default='' },
 	{ id='Size', label='Chart Size', type='float', default=1, min=0.5, max=5, step=.5 },
@@ -160,12 +171,15 @@ local function draw_GuitarChord(t)
 	user:find('next', 'duration')
 	local offset = hasTarget and user:xyRight() or -userwidth
 	local xoffset = (offset - width) / 2
-	local chordFontFace = nwc.hasTypeface('MusikChordSerif') and 'MusikChordSerif' or 'Arial'
-	local chordFontSize = (chordFontFace == 'MusikChordSerif' and 5 or 2.5) * size
-	local fingeringFontFace = 'Arial'
-	local fingeringFontSize = 1.5 * size
-	local dotFontFace = 'Arial'
-	local dotFontSize = .8 * size
+    local slf = styleListFull[t.Style]
+    nwc.hasTypeface(slf[1])
+    nwc.hasTypeface(slf[3])
+	local chordFontFace = slf[1]
+	local chordFontSize = 5 * size * slf[2]
+	local fingeringFontFace = slf[3]
+	local fingeringFontSize = slf[4] * 1.5 * size
+	local dotFontFace = slf[3]
+	local dotFontSize = slf[4] * .8 * size
 	local dotYOffset, dotXSize = -.25 * yspace, .375 * xspace
 	nwcdraw.setPen(penStyle, lineThickness)
 	for i = 0, strings - 1 do

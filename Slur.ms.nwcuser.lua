@@ -1,32 +1,43 @@
 -- Version 0.95
 
 --[[----------------------------------------------------------------
-This plugin draws a solid, dashed or dotted slur with adjustable end point positions and curve shape. It can be used for special situations where a normal slur does not work well, such as a slur-within-a-slur, or for 
+This plugin draws a solid, dashed or dotted slur with adjustable end point positions and curve shape. 
+It can be used for special situations where a normal slur does not work well, such as a slur-within-a-slur, or for 
 "conditional" slurs for different verses on a vocal staff. This object is ornamental only, and does not affect playback.
 
-To add a slur, insert the user object immediately before the note/chord where you want the slur to start. The slur object will detect the starting and ending chords' position, duration, stem direction and slur direction 
-settings, and will determine curvature strength, direction and end points that are appropriate for most situations. These settings can be overridden by use of various parameters.
+To add a slur, insert the user object immediately before the note/chord where you want the slur to start. 
+The slur object will detect the starting and ending chords' position, duration, stem direction and slur direction 
+settings, and will determine curvature strength, direction and end points that are appropriate for most 
+situations. These settings can be overridden by use of various parameters.
 @Span
 The number of notes/chords to include in the slur. The minimum value is 2, which is the default setting.
 @Pen
-The type of line to draw for the slur: solid, dash or dot. The solid line type will create a shaped Bezier curve that is thinner at the end points, similar in appearance to regular NWC slurs. The dot and dash line types are 
-drawn with a uniform line thickness. The default value is solid.
+The type of line to draw for the slur: solid, dash or dot. The solid line type will create a shaped Bezier 
+curve that is thinner at the end points, similar in appearance to regular Noteworthy slurs. The dot and dash 
+line types are drawn with a uniform line thickness. The default value is solid.
 @Dir
-The direction of the slur: Default, Upward or Downward. When set to Default, the slur will take its direction from the starting note's Slur Direction property, which in turn is based on the stem directions of the starting 
+The direction of the slur: Default, Upward or Downward. When set to Default, the slur will take its direction 
+from the starting note's Slur Direction property, which in turn is based on the stem directions of the starting 
 and ending notes. When set to Upward or Downward, the slur direction is set explicitly.
 
-Note that upward slurs are positioned at the top notes of the starting and ending chords, while downward slurs are positioned at the bottom notes.
+Note that upward slurs are positioned at the top notes of the starting and ending chords, while downward 
+slurs are positioned at the bottom notes.
 @StartOffsetX
-This will adjust the auto-determined horizontal (X) position of the slur's start point. The range of values is -100 to 100. The default setting is 0.
+This will adjust the auto-determined horizontal (X) position of the slur's start point. The range of values 
+is -100.00 to 100.00. The default setting is 0.
 @StartOffsetY
-This will adjust the auto-determined vertical (Y) position of the slur's start point. The range of values is -100 to 100. The default setting is 0.
+This will adjust the auto-determined vertical (Y) position of the slur's start point. The range of values 
+is -100.00 to 100.00. The default setting is 0.
 @EndOffsetX
-This will adjust the auto-determined horizontal (X) position of the slur's end point. The range of values is -100 to 100. The default setting is 0.
+This will adjust the auto-determined horizontal (X) position of the slur's end point. The range of values 
+is -100.00 to 100.00. The default setting is 0.
 @EndOffsetY
-This will adjust the auto-determined vertical (Y) position of the slur's end point. The range of values is -100 to 100. The default setting is 0.
+This will adjust the auto-determined vertical (Y) position of the slur's end point. The range of values 
+is -100.00 to 100.00. The default setting is 0.
 @Strength
-This will adjust the strength (shape) of the curve. The range of values is 0 to 10, where a value of 1 is the auto-determined curve strength. Lower values will result in a shallower curve, and stronger values a steeper curve. 
-A value of 0 results in a straight line. The default setting is 1.
+This will adjust the strength (shape) of the curve. The range of values is 0.00 to 10.00, where a value 
+of 1 is the auto-determined curve strength. Lower values will result in a shallower curve, and stronger 
+values a steeper curve. A value of 0 results in a straight line. The default setting is 1.
 --]]----------------------------------------------------------------
 
 local user = nwcdraw.user
