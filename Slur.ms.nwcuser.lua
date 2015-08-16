@@ -1,4 +1,4 @@
--- Version 0.95
+-- Version 0.97
 
 --[[----------------------------------------------------------------
 This plugin draws a solid, dashed or dotted slur with adjustable end point positions and curve shape. 
@@ -106,8 +106,8 @@ local function draw_Slur(t)
 	local x2 = endNote:xyTimeslot()
 	x1 = x1 + startOffsetX + xo1 + ((slurDir == 'Upward' and startStem == 'Up' and startNotehead ~= 'Whole') and .75 or 0)
 	x2 = x2 + endOffsetX + xo2 - ((slurDir == 'Downward' and endStem == 'Down' and endNotehead ~= 'Whole') and .75 or 0)
-	local y1 = (slurDir == 'Upward') and startNoteYTop + startOffsetY + 2 or startNoteYBottom - startOffsetY - 2
-	local y2 = (slurDir == 'Upward') and endNoteYTop + endOffsetY + 2 or endNoteYBottom - endOffsetY - 2
+	local y1 = (slurDir == 'Upward') and startNoteYTop + startOffsetY + 1.75 or startNoteYBottom - startOffsetY - 1.75
+	local y2 = (slurDir == 'Upward') and endNoteYTop + endOffsetY + 1.75 or endNoteYBottom - endOffsetY - 1.75
 	local xa = (x1 + x2) / 2
 	ya = (y1 + y2) / 2 + ((slurDir == 'Upward') and ya or -ya)
 	nwcdraw.moveTo(x1, y1)
