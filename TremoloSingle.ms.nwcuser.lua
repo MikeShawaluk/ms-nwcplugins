@@ -9,12 +9,17 @@ If additional space is needed to accommodate a larger number of beams, increase 
 @Beams
 The number of beams to be drawn, between 1 and 4. The default setting is 3.
 
+For stemmed notes, the first beam will be drawn closest to the stem tip, with successive beams added toward the notehead.
+For unstemmed (whole) notes, the first beam will be drawn closest to the notehead, 
+with successive beams added further from the notehead.
+
 For playback, the number of beams determines the frequency and number of notes to be played. 
 
 The number of beams for a tremolo can be modified by highlighting the object and pressing the + or - keys.
 @Offset
 This allows the distance between the notehead and tremolo beams to be adjusted. The value can be between -5.00 and 5.00. 
-Positive values move the beams toward the note head, negative values away from the note head. The default setting is 0.
+For stemmed notes, positive values move the beams away from the stem tip and toward the note head.
+For unstemmed (whole) notes, positive values move the beams away from the note head. The default setting is 0.
 @Play
 Enables playback of the tremolo. The default setting is enabled (checked).
 
@@ -32,7 +37,6 @@ local function draw_TremoloSingle(t)
 	local stemWeight = my*0.0126
 	local offset = t.Offset
 	local beams = t.Beams
-	local yu = user:staffPos()
 	local beamHeight, beamSpacing, beamHalfWidth, beamStemOffset, beamSlope = .6, 1.6, 0.55, 1, 0.6
 	nwcdraw.setPen('solid', stemWeight)
 	if not user:find('next', 'note') then return end
@@ -40,14 +44,15 @@ local function draw_TremoloSingle(t)
 	local x, ys = user:xyStemTip(stemDir)
 	local xa, ya = user:xyAlignAnchor(stemDir)
 	local d = user:durationBase(1)
+	local wf = x and 1 or -1
 	local j = durations[d]
 	if j then
 		offset = offset + (user:isBeamed(1) and j*2-.75 or j*1.5+3.75+stemDir/4)
 	end	
 	x = x or xa + .65
-	ys = ys and ys-offset*stemDir or ya-(offset+2)*stemDir
+	ys = ys and ys-offset*stemDir or ya-(offset+2)*stemDir*wf
 	for i = 0, beams-1 do
-		local y = ys-(i*beamSpacing+beamStemOffset)*stemDir
+		local y = ys-(i*beamSpacing+beamStemOffset)*stemDir*wf
 		nwcdraw.moveTo(x-beamHalfWidth, y)
 		nwcdraw.beginPath()
 		nwcdraw.line(x+beamHalfWidth, y+beamSlope)
@@ -65,7 +70,7 @@ end
 
 local spec_TremoloSingle = {
 	{ id='Beams', label='Number of Beams', type='int', default=3, min=1, max=4 },
-	{ id='Offset', label='Vertical Offset', type='float', default=0, min=-5, max=5, step=.1 },
+	{ id='Offset', label='Vertical Offset', type='float', default=0, min=-5, max=5, step=.5 },
 	{ id='Play', label='Play Notes', type='bool', default=true },
 	{ id='TripletPlayback', label='Triplet Playback', type='bool', default=false }
 }
