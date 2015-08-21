@@ -51,20 +51,20 @@ local spec_Ottavamatic = {
 }
 
 for k, s in ipairs(spec_Ottavamatic) do
-	local a
-	if s.type == 'enum' then
-		a = {
-			type = 'choice',
-			name = s.label,
-			disable = false,
-			list = s.list,
-			data = k,
-		}
-	else
+	local a, l
+	if s.type == 'bool' then
 		a = {
 			type = 'command',
 			name = s.label,
 			disable = false,
+			data = k,
+		}
+	else
+		a = {
+			type = 'choice',
+			name = s.label,
+			disable = false,
+			list = s.type == 'enum' and s.list or {'','Change...'},
 			data = k,
 		}
 	end
@@ -74,14 +74,14 @@ end
 local function menuInit_Ottavamatic(t)
 	for _, m in ipairs(menu_Ottavamatic) do
 		local s = spec_Ottavamatic[m.data]
+		local id = t[s.id]
 		if m.type == 'command' then
-			if s.type == 'bool' then
-				m.checkmark = t[s.id]
-			else
-				m.name = s.label .. '... (' .. t[s.id] .. ')'
-			end
+			m.checkmark = id
 		else
-			m.default = t[s.id]
+			if s.type ~= 'enum' then
+				m.list[1] = id
+			end
+			m.default = id
 		end
 	end
 end
@@ -90,14 +90,14 @@ local function menuClick_Ottavamatic(t, menu, choice)
 	local m = menu_Ottavamatic[menu]
 	local s = spec_Ottavamatic[m.data]
 	if m.type == 'command' then
-		if s.type == 'bool' then
-			t[s.id] = not t[s.id]
-		else
-			local dt = s.type == 'text' and '*' or '#[' .. (s.min or -100) .. ',' .. (s.max or 100) .. ']'
-			t[s.id] = nwcui.prompt('Enter ' .. s.label .. ':', dt, t[s.id])
-		end
+		t[s.id] = not t[s.id]
 	else
-		t[s.id] = m.list[choice]
+		if s.type == 'enum' then
+			t[s.id] = m.list[choice]
+		else
+			local dt = s.type == 'text' and '*' or string.format('#[%s,%s]', s.min or -100, s.max or 100)
+			t[s.id] = nwcui.prompt(string.format('Enter %s:', s.label), dt, t[s.id])
+		end
 	end
 end
 
