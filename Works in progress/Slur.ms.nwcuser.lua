@@ -1,4 +1,4 @@
--- Version 0.96
+-- Version 0.96x
 
 --[[----------------------------------------------------------------
 This plugin draws a solid, dashed or dotted slur with adjustable end point positions and curve shape. 
@@ -43,23 +43,15 @@ values a steeper curve. A value of 0 results in a straight line. The default set
 local user = nwcdraw.user
 local startNote = nwc.drawpos.new()
 local endNote = nwc.drawpos.new()
-local drawPenStyle = {}
-local tieDir = {}
 
-for k,s in ipairs(nwc.txt.DrawPenStyle) do
-	drawPenStyle[#drawPenStyle+1] = s
-end
-
-for k,s in ipairs(nwc.txt.TieDir) do
-	tieDir[#tieDir+1] = s
-end
+local dtt = { int='#[%s,%s]', float='#.#[%s,%s]' }
 
 local menu_Slur = {}
 
 local spec_Slur = {
 	{ id='Span', label='Note Span', type='int', default=2, min=2 },
-	{ id='Pen', label='Line Type', type='enum', default='solid', list=drawPenStyle },
-	{ id='Dir', label='Direction', type='enum', default='Default', list=tieDir },
+	{ id='Pen', label='Line Type', type='enum', default='solid', list=nwc.txt.DrawPenStyle },
+	{ id='Dir', label='Direction', type='enum', default='Default', list=nwc.txt.TieDir },
 	{ id='StartOffsetX', label='Start Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='StartOffsetY', label='Start Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='EndOffsetX', label='End Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
@@ -68,22 +60,12 @@ local spec_Slur = {
 }
 
 for k, s in ipairs(spec_Slur) do
-	local a, l
+	local a = {	name=s.label, disable=false, data=k }
 	if s.type == 'bool' then
-		a = {
-			type = 'command',
-			name = s.label,
-			disable = false,
-			data = k,
-		}
+		a.type = 'command'
 	else
-		a = {
-			type = 'choice',
-			name = s.label,
-			disable = false,
-			list = s.type == 'enum' and s.list or {'','Change...'},
-			data = k,
-		}
+		a.type = 'choice'
+		a.list = s.type == 'enum' and s.list or { '', 'Change...' }
 	end
 	menu_Slur[#menu_Slur+1] = a
 end
@@ -91,14 +73,14 @@ end
 local function menuInit_Slur(t)
 	for _, m in ipairs(menu_Slur) do
 		local s = spec_Slur[m.data]
-		local id = t[s.id]
+		local v = t[s.id]
 		if m.type == 'command' then
-			m.checkmark = id
+			m.checkmark = v
 		else
 			if s.type ~= 'enum' then
-				m.list[1] = id
+				m.list[1] = v
 			end
-			m.default = id
+			m.default = v
 		end
 	end
 end
@@ -106,14 +88,15 @@ end
 local function menuClick_Slur(t, menu, choice)
 	local m = menu_Slur[menu]
 	local s = spec_Slur[m.data]
+	local v = t[s.id]
 	if m.type == 'command' then
-		t[s.id] = not t[s.id]
+		t[s.id] = not v
 	else
 		if s.type == 'enum' then
 			t[s.id] = m.list[choice]
-		else
-			local dt = s.type == 'text' and '*' or string.format('#[%s,%s]', s.min or -100, s.max or 100)
-			t[s.id] = nwcui.prompt(string.format('Enter %s:', s.label), dt, t[s.id])
+		elseif choice ~= 1 then
+			local dt = s.type == 'text' and '*' or string.format(dtt[s.type], s.min or -100, s.max or 100)
+			t[s.id] = nwcui.prompt(string.format('Enter %s:', string.gsub(s.label, '&', '')), dt, v)
 		end
 	end
 end

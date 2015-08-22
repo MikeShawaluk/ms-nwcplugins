@@ -1,4 +1,4 @@
--- Version 0.95
+-- Version 0.95x
 
 --[[----------------------------------------------------------------
 This plugin draws 8va/15ma (bassa) markings in a score by looking for Instrument Change commands with a Transpose settings corresponding to one or two octaves upward/downward. The markings include a starting label and 
@@ -38,6 +38,8 @@ local nextPatch = nwc.ntnidx.new()
 local edgeNotePos = nwc.drawpos.new()
 local endOfStaff = nwc.drawpos.new()
 
+local dtt = { int='#[%s,%s]', float='#.#[%s,%s]' }
+
 local menu_Ottavamatic = {}
 
 local spec_Ottavamatic = {
@@ -51,22 +53,12 @@ local spec_Ottavamatic = {
 }
 
 for k, s in ipairs(spec_Ottavamatic) do
-	local a, l
+	local a = {	name=s.label, disable=false, data=k }
 	if s.type == 'bool' then
-		a = {
-			type = 'command',
-			name = s.label,
-			disable = false,
-			data = k,
-		}
+		a.type = 'command'
 	else
-		a = {
-			type = 'choice',
-			name = s.label,
-			disable = false,
-			list = s.type == 'enum' and s.list or {'','Change...'},
-			data = k,
-		}
+		a.type = 'choice'
+		a.list = s.type == 'enum' and s.list or { '', 'Change...' }
 	end
 	menu_Ottavamatic[#menu_Ottavamatic+1] = a
 end
@@ -74,14 +66,14 @@ end
 local function menuInit_Ottavamatic(t)
 	for _, m in ipairs(menu_Ottavamatic) do
 		local s = spec_Ottavamatic[m.data]
-		local id = t[s.id]
+		local v = t[s.id]
 		if m.type == 'command' then
-			m.checkmark = id
+			m.checkmark = v
 		else
 			if s.type ~= 'enum' then
-				m.list[1] = id
+				m.list[1] = v
 			end
-			m.default = id
+			m.default = v
 		end
 	end
 end
@@ -89,14 +81,15 @@ end
 local function menuClick_Ottavamatic(t, menu, choice)
 	local m = menu_Ottavamatic[menu]
 	local s = spec_Ottavamatic[m.data]
+	local v = t[s.id]
 	if m.type == 'command' then
-		t[s.id] = not t[s.id]
+		t[s.id] = not v
 	else
 		if s.type == 'enum' then
 			t[s.id] = m.list[choice]
-		else
-			local dt = s.type == 'text' and '*' or string.format('#[%s,%s]', s.min or -100, s.max or 100)
-			t[s.id] = nwcui.prompt(string.format('Enter %s:', s.label), dt, t[s.id])
+		elseif choice ~= 1 then
+			local dt = s.type == 'text' and '*' or string.format(dtt[s.type], s.min or -100, s.max or 100)
+			t[s.id] = nwcui.prompt(string.format('Enter %s:', string.gsub(s.label, '&', '')), dt, v)
 		end
 	end
 end
