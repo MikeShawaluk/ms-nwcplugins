@@ -75,6 +75,8 @@ local startingVerseList = { '1', '2', '3', '4', '5', '6', '7', '8' }
 local maxVerseList = { 'All', '1', '2', '3', '4', '5', '6', '7', '8' }
 local separatorList = { 'Off', '1', '2', '3', '4', '5', '6', '7', '8' }
 
+local dtt = { int='#[%s,%s]', float='#.#[%s,%s]' }
+
 local menu_VerseNumbers = {}
 
 local spec_VerseNumbers = {
@@ -87,22 +89,12 @@ local spec_VerseNumbers = {
 }
 
 for k, s in ipairs(spec_VerseNumbers) do
-	local a
-	if s.type == 'enum' then
-		a = {
-			type = 'choice',
-			name = s.label,
-			disable = false,
-			list = s.list,
-			data = k,
-		}
+	local a = {	name=s.label, disable=false, data=k }
+	if s.type == 'bool' then
+		a.type = 'command'
 	else
-		a = {
-			type = 'command',
-			name = s.label,
-			disable = false,
-			data = k,
-		}
+		a.type = 'choice'
+		a.list = s.type == 'enum' and s.list or { '', 'Change...' }
 	end
 	menu_VerseNumbers[#menu_VerseNumbers+1] = a
 end
@@ -110,14 +102,14 @@ end
 local function menuInit_VerseNumbers(t)
 	for _, m in ipairs(menu_VerseNumbers) do
 		local s = spec_VerseNumbers[m.data]
+		local v = t[s.id]
 		if m.type == 'command' then
-			if s.type == 'bool' then
-				m.checkmark = t[s.id]
-			else
-				m.name = s.label .. '... (' .. t[s.id] .. ')'
-			end
+			m.checkmark = v
 		else
-			m.default = t[s.id]
+			if s.type ~= 'enum' then
+				m.list[1] = v
+			end
+			m.default = v
 		end
 	end
 end
@@ -125,15 +117,16 @@ end
 local function menuClick_VerseNumbers(t, menu, choice)
 	local m = menu_VerseNumbers[menu]
 	local s = spec_VerseNumbers[m.data]
+	local v = t[s.id]
 	if m.type == 'command' then
-		if s.type == 'bool' then
-			t[s.id] = not t[s.id]
-		else
-			local dt = s.type == 'text' and '*' or '#[' .. (s.min or -100) .. ',' .. (s.max or 100) .. ']'
-			t[s.id] = nwcui.prompt('Enter ' .. s.label .. ':', dt, t[s.id])
-		end
+		t[s.id] = not v
 	else
-		t[s.id] = m.list[choice]
+		if s.type == 'enum' then
+			t[s.id] = m.list[choice]
+		elseif choice ~= 1 then
+			local dt = s.type == 'text' and '*' or string.format(dtt[s.type], s.min or -100, s.max or 100)
+			t[s.id] = nwcui.prompt(string.format('Enter %s:', string.gsub(s.label, '&', '')), dt, v)
+		end
 	end
 end
 
