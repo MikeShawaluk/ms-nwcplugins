@@ -1,4 +1,4 @@
--- Version 0.96
+-- Version 0.96x
 
 --[[----------------------------------------------------------------
 This plugin draws a solid, dashed or dotted slur with adjustable end point positions and curve shape. 
@@ -44,6 +44,10 @@ local user = nwcdraw.user
 local startNote = nwc.drawpos.new()
 local endNote = nwc.drawpos.new()
 
+local dtt = { int='#[%s,%s]', float='#.#[%s,%s]' }
+
+local menu_Slur = {}
+
 local spec_Slur = {
 	{ id='Span', label='Note Span', type='int', default=2, min=2 },
 	{ id='Pen', label='Line Type', type='enum', default='solid', list=nwc.txt.DrawPenStyle },
@@ -54,6 +58,48 @@ local spec_Slur = {
 	{ id='EndOffsetY', label='End Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='Strength', label='Strength', type='float', default=1, min=0, max=10, step=0.5 },
 }
+
+for k, s in ipairs(spec_Slur) do
+	local a = {	name=s.label, disable=false, data=k }
+	if s.type == 'bool' then
+		a.type = 'command'
+	else
+		a.type = 'choice'
+		a.list = s.type == 'enum' and s.list or { '', 'Change...' }
+	end
+	menu_Slur[#menu_Slur+1] = a
+end
+
+local function menuInit_Slur(t)
+	for _, m in ipairs(menu_Slur) do
+		local s = spec_Slur[m.data]
+		local v = t[s.id]
+		if m.type == 'command' then
+			m.checkmark = v
+		else
+			if s.type ~= 'enum' then
+				m.list[1] = v
+			end
+			m.default = v
+		end
+	end
+end
+
+local function menuClick_Slur(t, menu, choice)
+	local m = menu_Slur[menu]
+	local s = spec_Slur[m.data]
+	local v = t[s.id]
+	if m.type == 'command' then
+		t[s.id] = not v
+	else
+		if s.type == 'enum' then
+			t[s.id] = m.list[choice]
+		elseif choice ~= 1 then
+			local dt = s.type == 'text' and '*' or string.format(dtt[s.type], s.min or -100, s.max or 100)
+			t[s.id] = nwcui.prompt(string.format('Enter %s:', string.gsub(s.label, '&', '')), dt, v)
+		end
+	end
+end
 
 local function noteStuff(item)
 	local opts = item:objProp('Opts') or ''
@@ -132,5 +178,8 @@ end
 return {
 	spec = spec_Slur,
 	spin = spin_Slur,
-	draw = draw_Slur
+	draw = draw_Slur,
+	menu = menu_Slur,
+	menuInit = menuInit_Slur,
+	menuClick = menuClick_Slur,
 }

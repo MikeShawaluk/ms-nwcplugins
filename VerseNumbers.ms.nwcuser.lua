@@ -1,4 +1,4 @@
--- Version 0.95
+-- Version 0.95x
 
 --[[----------------------------------------------------------------
 This plugin will add verse numbers to lyrics on a staff. The numbers will be drawn using the current "StaffLyric" font, to match the size and style of the lyrics. The verse numbers can appear just once,
@@ -75,6 +75,10 @@ local startingVerseList = { '1', '2', '3', '4', '5', '6', '7', '8' }
 local maxVerseList = { 'All', '1', '2', '3', '4', '5', '6', '7', '8' }
 local separatorList = { 'Off', '1', '2', '3', '4', '5', '6', '7', '8' }
 
+local dtt = { int='#[%s,%s]', float='#.#[%s,%s]' }
+
+local menu_VerseNumbers = {}
+
 local spec_VerseNumbers = {
 	{ id='StartVerseNumber', label='Start Verse Number', type='int', default=1, min=1, max=99 },
 	{ id='StartingVerse', label='Starting Verse', type='enum', default=startingVerseList[1], list=startingVerseList },
@@ -83,6 +87,48 @@ local spec_VerseNumbers = {
 	{ id='SpecialText', label='Special Text', type='text', default='' },
 	{ id='Punctuation', label='Punctuation', type='text', default='. ' }
 }
+
+for k, s in ipairs(spec_VerseNumbers) do
+	local a = {	name=s.label, disable=false, data=k }
+	if s.type == 'bool' then
+		a.type = 'command'
+	else
+		a.type = 'choice'
+		a.list = s.type == 'enum' and s.list or { '', 'Change...' }
+	end
+	menu_VerseNumbers[#menu_VerseNumbers+1] = a
+end
+
+local function menuInit_VerseNumbers(t)
+	for _, m in ipairs(menu_VerseNumbers) do
+		local s = spec_VerseNumbers[m.data]
+		local v = t[s.id]
+		if m.type == 'command' then
+			m.checkmark = v
+		else
+			if s.type ~= 'enum' then
+				m.list[1] = v
+			end
+			m.default = v
+		end
+	end
+end
+
+local function menuClick_VerseNumbers(t, menu, choice)
+	local m = menu_VerseNumbers[menu]
+	local s = spec_VerseNumbers[m.data]
+	local v = t[s.id]
+	if m.type == 'command' then
+		t[s.id] = not v
+	else
+		if s.type == 'enum' then
+			t[s.id] = m.list[choice]
+		elseif choice ~= 1 then
+			local dt = s.type == 'text' and '*' or string.format(dtt[s.type], s.min or -100, s.max or 100)
+			t[s.id] = nwcui.prompt(string.format('Enter %s:', string.gsub(s.label, '&', '')), dt, v)
+		end
+	end
+end
 
 local function create_VerseNumbers(t)
 	t.Class = 'StaffSig'
@@ -140,5 +186,8 @@ return {
 	spec = spec_VerseNumbers,
 	create = create_VerseNumbers,
 	width = draw_VerseNumbers,
-	draw = draw_VerseNumbers
+	draw = draw_VerseNumbers,
+	menu = menu_VerseNumbers,
+	menuInit = menuInit_VerseNumbers,
+	menuClick = menuClick_VerseNumbers,
 }
