@@ -38,7 +38,7 @@ local nextPatch = nwc.ntnidx.new()
 local edgeNotePos = nwc.drawpos.new()
 local endOfStaff = nwc.drawpos.new()
 
-local dtt = { int='#[%s,%s]', float='#.#[%s,%s]' }
+local dtt = { int='#', float='#.#' }
 
 local menu_Ottavamatic = {}
 
@@ -88,7 +88,7 @@ local function menuClick_Ottavamatic(t, menu, choice)
 		if s.type == 'enum' then
 			t[s.id] = m.list[choice]
 		elseif choice ~= 1 then
-			local dt = s.type == 'text' and '*' or string.format(dtt[s.type], s.min or -100, s.max or 100)
+			local dt = s.type == 'text' and '*' or string.format('%s[%s,%s]', dtt[s.type], s.min, s.max)
 			t[s.id] = nwcui.prompt(string.format('Enter %s:', string.gsub(s.label, '&', '')), dt, v)
 		end
 	end
