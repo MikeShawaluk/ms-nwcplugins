@@ -1,4 +1,4 @@
--- Version 0.95
+-- Version 0.96
 
 --[[----------------------------------------------------------------
 This plugin draws 8va/15ma (bassa) markings in a score by looking for Instrument Change commands with a Transpose settings corresponding to one or two octaves upward/downward. The markings include a starting label and 
@@ -38,6 +38,10 @@ local nextPatch = nwc.ntnidx.new()
 local edgeNotePos = nwc.drawpos.new()
 local endOfStaff = nwc.drawpos.new()
 
+local dtt = { int='#', float='#.#' }
+
+local menu_Ottavamatic = {}
+
 local spec_Ottavamatic = {
 	{ id='UpOneText', label='+1 &Octave Text', type='text', default='8va' },
 	{ id='DownOneText', label='-1 &Octave Text', type='text', default='8va bassa' },
@@ -47,6 +51,48 @@ local spec_Ottavamatic = {
 	{ id='IncludeRests', label='Include Rests', type='bool', default=false },
 	{ id='StaffTranspose', label='Staff Transpose', type='int', default=0, min=-120, max=120 }
 }
+
+for k, s in ipairs(spec_Ottavamatic) do
+	local a = {	name=s.label, disable=false, data=k }
+	if s.type == 'bool' then
+		a.type = 'command'
+	else
+		a.type = 'choice'
+		a.list = s.type == 'enum' and s.list or { '', 'Change...' }
+	end
+	menu_Ottavamatic[#menu_Ottavamatic+1] = a
+end
+
+local function menuInit_Ottavamatic(t)
+	for _, m in ipairs(menu_Ottavamatic) do
+		local s = spec_Ottavamatic[m.data]
+		local v = t[s.id]
+		if m.type == 'command' then
+			m.checkmark = v
+		else
+			if s.type ~= 'enum' then
+				m.list[1] = v
+			end
+			m.default = v
+		end
+	end
+end
+
+local function menuClick_Ottavamatic(t, menu, choice)
+	local m = menu_Ottavamatic[menu]
+	local s = spec_Ottavamatic[m.data]
+	local v = t[s.id]
+	if m.type == 'command' then
+		t[s.id] = not v
+	else
+		if s.type == 'enum' then
+			t[s.id] = m.list[choice]
+		elseif choice ~= 1 then
+			local dt = s.type == 'text' and '*' or string.format('%s[%s,%s]', dtt[s.type], s.min, s.max)
+			t[s.id] = nwcui.prompt(string.format('Enter %s:', string.gsub(s.label, '&', '')), dt, v)
+		end
+	end
+end
 
 local function doPrintName(showAs)
 	nwcdraw.setFont('Tahoma', 3, 'r')
@@ -178,5 +224,8 @@ return {
 	create = create_Ottavamatic,
 	width = draw_Ottavamatic,
 	draw = draw_Ottavamatic,
-	transpose = transpose_Ottavamatic
+	transpose = transpose_Ottavamatic,
+	menu = menu_Ottavamatic,
+	menuInit = menuInit_Ottavamatic,
+	menuClick = menuClick_Ottavamatic,
 }
