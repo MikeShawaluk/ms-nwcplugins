@@ -1,4 +1,4 @@
--- Version 0.96
+-- Version 0.97
 
 --[[----------------------------------------------------------------
 This plugin draws 8va/15ma (bassa) markings in a score by looking for Instrument Change commands with a Transpose settings corresponding to one or two octaves upward/downward. The markings include a starting label and 
@@ -141,9 +141,9 @@ local function drawShift(drawpos1, drawpos2, extendingSection, endOfSection, shi
 	local y2 = shiftDir > 0 and y-h+d or y-d
 	x2 = math.max(x2, x1+w+1)
 	nwcdraw.moveTo(x1, y2)
-	if shiftDir > 0 and label:match('%d+') then
-		local part1 = labelPrefix .. (label:match('(%d+)') or '')
-		local part2 = label:match('(%a+)')
+	if shiftDir > 0 and label:match('^%d+') then
+		local part1, part2 = label:match('(%d*)(%D*)')
+		part1 = labelPrefix .. (part1 or '')
 		local part1Len = nwcdraw.calcTextSize(part1)
 		local part2Len = nwcdraw.calcTextSize(part2)
 		nwcdraw.text(part1)
