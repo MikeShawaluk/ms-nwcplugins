@@ -1,4 +1,4 @@
--- Version 0.1
+-- Version 0.11
 
 --[[--------------------------------------------------------------------------
 This plugin is used to create 6-string guitar tablature on a custom (6 line) staff.
@@ -25,7 +25,7 @@ Determines whether playback is enabled. The default setting is true (checked).
 
 local userObjTypeName = ...
 local user = nwcdraw.user
-local strumStyles = { 'up', 'down' }
+local strumStyles = { 'up', 'down', 'no' }
 local stringNotes = {40, 45, 50, 55, 59, 64} -- 6 string guitar, E tuning
 
 local spec_Tab = {
@@ -38,20 +38,13 @@ local function draw_Tab(t)
 	if not user:find('next', 'note') then return end
 	nwcdraw.alignText('middle','center')
 	nwcdraw.setFontClass('PageSmallText')
+	nwcdraw.opaqueMode(true)
 	local nc = user:noteCount()
-	local x, y = user:durationBase(1) == 'Whole' and 0.65 or 0.5
+	local x = user:durationBase(1) == 'Whole' and 0.65 or 0.5
 	local i = 1
 	for f in t.Fret:gmatch('%S+') do
 		if i > nc then break end
-		y = user:notePos(i)
-		nwcdraw.moveTo(x, y)
-		nwcdraw.setWhiteout(true)
-		nwcdraw.beginPath()
-		nwcdraw.ellipse(.4)
-		nwcdraw.closeFigure()
-		nwcdraw.endPath('fill')
-		nwcdraw.setWhiteout(false)
-		nwcdraw.moveTo(x, y)
+		nwcdraw.moveTo(x, user:notePos(i))
 		nwcdraw.text(f)
 		i = i+1
 	end
@@ -79,8 +72,7 @@ local function play_Tab(t)
 	if duration < 1 then return end
 	local noteCount = #k
 	if k then
-		local arpeggioShift = math.min(duration, nwcplay.PPQ)/12
-		local thisShift = 0
+		local arpeggioShift = (strum == 'no') and 0 or math.min(duration, nwcplay.PPQ)/12
 		for i, v in ipairs(k) do
 			local thisShift = arpeggioShift * ((strum == 'down') and i or noteCount-i)
 			nwcplay.note(thisShift, duration-thisShift, v)
