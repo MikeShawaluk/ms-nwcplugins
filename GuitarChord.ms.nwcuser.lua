@@ -1,11 +1,12 @@
--- Version 0.96
+-- Version 0.97
 
 --[[----------------------------------------------------------------
 This plugin draw a guitar chord chart and optionally strums the chord when the song is played. 
 A variety of notation is shown, including the chord name, open and excluded strings, barre 
 positions, fret position and optional finger numbers.
 
-When adding a new chord, the user can choose from 35 predefined chords, or can choose "(Custom)" to create a chord chart from scratch. The chord chart can be positioned vertical by changing the object marker position.
+When adding a new chord, the user can choose from 35 predefined chords, or can choose "(Custom)"
+to create a chord chart from scratch. The chord chart can be positioned vertical by changing the object marker position.
 @Name
 The name of the chord. It is displayed using a font which displays 'b' and '#' as flat and sharp symbols.
 @Style
@@ -51,6 +52,10 @@ or up (high- to low-pitched strings). The default is down.
 When a barre is present on the top fret and there are open (o) or excluded (x) strings within 
 the barre, this setting can be used to move the barre upward a specified distance, to avoid 
 collision with those labels. This will also move the Chord Name upward. The default value is 0.0.
+@Anticipated
+This specifies that the strum should anticipate (precede) the chord, so that the final 
+played note occurs on the chord's beat position. When unchecked, the first played note of the 
+strummed chord is at the chord's beat position. The default setting is on (checked).
 --]]----------------------------------------------------------------
 
 local userObjTypeName = ...
@@ -80,7 +85,8 @@ local spec_GuitarChord = {
 	{ id='Span', label='Note Span', type='int', default=0, min=0 },
 	{ id='FretTextPosition', label='Fret Text Location', type='enum', default='top', list=fretTextPos },
 	{ id='Strum', label='Strum Direction', type='enum', default='down', list=strumStyles },
-	{ id='TopBarreOffset', label='Top Barre Offset', type='float', default=0, min=0, step=.5 }
+	{ id='TopBarreOffset', label='Top Barre Offset', type='float', default=0, min=0, step=.5 },
+	{ id='Anticipated', label='Anticipated Playback', type='bool', default=true },
 }
 
 local commonChords = {
@@ -295,11 +301,12 @@ local function play_GuitarChord(t)
 	local duration = searchObj:sppOffset()
 	if duration < 1 then return end
 	local noteCount = #k
+	searchObj:find('first')
+ 	local arpeggioShift = math.min(duration, nwcplay.PPQ)/12
+    local startOffset = t.Anticipated and math.max(-arpeggioShift * (noteCount-1), searchObj:sppOffset()) or 0
 	if k then
-		local arpeggioShift = math.min(duration, nwcplay.PPQ)/12
-		local thisShift = 0
 		for i, v in ipairs(k) do
-			local thisShift = arpeggioShift * ((strum == 'down') and i or noteCount-i)
+			local thisShift = arpeggioShift * ((strum == 'down') and i-1 or noteCount-i) + startOffset
 			nwcplay.note(thisShift, duration-thisShift, v + capo)
 		end
 	end
