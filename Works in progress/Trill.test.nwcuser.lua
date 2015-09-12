@@ -3,7 +3,8 @@
 --[[----------------------------------------------------------------
 This plugin draws a trill above or below a set of notes, and optionally plays the trill.
 @Span
-The number of notes/chords to include in the trill. The minimum value is 1, which is the default setting.
+The number of notes/chords over which the trill line will extend and the trill will play. A setting of 0 will also specify the initial
+note for playback duration, and will suppress the line. The default setting is 0.
 @Scale
 The scale factor for the trill marking. This is a value from 5% to 400%, and the default setting is 100%.
 @StartOffset
