@@ -1,4 +1,4 @@
--- Version 0.96
+-- Version 1.0
 
 --[[----------------------------------------------------------------
 This object creates a single note tremolo marking. It draws the markings, and will optionally play the note in tremolo style.

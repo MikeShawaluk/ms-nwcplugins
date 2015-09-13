@@ -1,4 +1,4 @@
--- Version 0.96
+-- Version 1.0
 
 --[[----------------------------------------------------------------
 This plugin draws a solid, dashed or dotted slur with adjustable end point positions and curve shape. 

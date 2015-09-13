@@ -1,4 +1,4 @@
--- Version 0.95
+-- Version 1.0
 
 --[[----------------------------------------------------------------
 This plugin will add verse numbers to lyrics on a staff. The numbers will be drawn using the current "StaffLyric" font, to match the size and style of the lyrics. The verse numbers can appear just once,
@@ -20,36 +20,9 @@ Text to append to each verse number. The default setting is ". " (a period follo
 --]]----------------------------------------------------------------
 
 local userObjTypeName = ...
+local userObjSigName = nwc.toolbox.genSigName(userObjTypeName)
 local drawpos = nwcdraw.user
 local nextVerseNumObj = nwc.ntnidx.new()
-local showInTargets = {edit=1, selector=1}
-
-local function doPrintName(showAs)
-	nwcdraw.setFont('Tahoma', 3, 'r')
-
-	local xyar = nwcdraw.getAspectRatio()
-	local w, h = nwcdraw.calcTextSize(showAs)
-	local w_adj, h_adj = (h/xyar), (w*xyar)+3
-	if not nwcdraw.isDrawing() then return w_adj+.2 end
-
-	for i=1, 2 do
-		nwcdraw.moveTo(-w_adj/2, 0)
-		if i == 1 then
-			nwcdraw.setWhiteout()
-			nwcdraw.beginPath()
-		else
-			nwcdraw.endPath('fill')
-			nwcdraw.setWhiteout(false)
-			nwcdraw.setPen('solid', 150)
-		end
-		nwcdraw.roundRect(w_adj/2, h_adj/2, w_adj/2, 1)
-	end
-
-	nwcdraw.alignText('bottom', 'center')
-	nwcdraw.moveTo(0, 0)
-	nwcdraw.text(showAs, 90)
-	return 0
-end
 
 local function csplit(str, sep)
 	local ret = {}
@@ -86,16 +59,12 @@ local spec_VerseNumbers = {
 
 local function create_VerseNumbers(t)
 	t.Class = 'StaffSig'
-	t.Pos = 0
 end
 
 local function draw_VerseNumbers(t)
-	local media = nwcdraw.getTarget()
-	local w = 0;
-	if showInTargets[media] and not nwcdraw.isAutoInsert() then
-		w = doPrintName('VerseNumbers')
-	end
+	local w = nwc.toolbox.drawStaffSigLabel(userObjSigName)
 	if not nwcdraw.isDrawing() then return w end
+
 	if drawpos:isHidden() then return end
 	if not findLyricPos(drawpos) then return end
 	if nextVerseNumObj:find('next', 'user', userObjTypeName) then

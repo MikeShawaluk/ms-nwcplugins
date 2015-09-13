@@ -1,4 +1,4 @@
--- Version 0.97
+-- Version 1.0
 
 --[[----------------------------------------------------------------
 This plugin draws 8va/15ma (bassa) markings in a score by looking for Instrument Change commands with a Transpose settings corresponding to one or two octaves upward/downward. The markings include a starting label and 
@@ -28,8 +28,8 @@ staff instrument transpose of -2. Therefore, an 8va region for this instrument w
 --]]----------------------------------------------------------------
 
 local userObjTypeName = ...
+local userObjSigName = nwc.toolbox.genSigName(userObjTypeName)
 local user = nwcdraw.user
-local showInTargets = {edit=1, selector=1}
 local transposeLookup = { [12] = 1, [-12] = -1, [24] = 2, [-24] = -2 }
 local priorUser8va = nwc.ntnidx.new()
 local nextUser8va = nwc.ntnidx.new()
@@ -94,33 +94,6 @@ local function menuClick_Ottavamatic(t, menu, choice)
 	end
 end
 
-local function doPrintName(showAs)
-	nwcdraw.setFont('Tahoma', 3, 'r')
-
-	local xyar = nwcdraw.getAspectRatio()
-	local w, h = nwcdraw.calcTextSize(showAs)
-	local w_adj, h_adj = (h/xyar), (w*xyar)+3
-	if not nwcdraw.isDrawing() then return w_adj+.2 end
-
-	for i=1, 2 do
-		nwcdraw.moveTo(-w_adj/2, 0)
-		if i == 1 then
-			nwcdraw.setWhiteout()
-			nwcdraw.beginPath()
-		else
-			nwcdraw.endPath('fill')
-			nwcdraw.setWhiteout(false)
-			nwcdraw.setPen('solid', 150)
-		end
-		nwcdraw.roundRect(w_adj/2, h_adj/2, w_adj/2, 1)
-	end
-
-	nwcdraw.alignText('bottom', 'center')
-	nwcdraw.moveTo(0, 0)
-	nwcdraw.text(showAs, 90)
-	return 0
-end
-	
 local function find8vaEdge(idx, dir, t)
 	if not idx:find(dir,'objType', 'Instrument') then return false end
 	local trans = (tonumber(idx:objProp('Trans')) or 0) - t.StaffTranspose
@@ -162,20 +135,17 @@ end
 
 local function create_Ottavamatic(t)
 	t.Class = 'StaffSig'
-    t.Pos = 0
 end
 
 local function draw_Ottavamatic(t)
+	local w = nwc.toolbox.drawStaffSigLabel(userObjSigName)
+	if not nwcdraw.isDrawing() then return w end
+
 	local _, my = nwcdraw.getMicrons()
 	local penWidth = my*.315
 	local drawpos = nwc.drawpos
- 	local media = nwcdraw.getTarget()
-	local w = 0
+
 	local yOffset = user:staffPos()
-	if showInTargets[media] and not nwcdraw.isAutoInsert() then
-		w = doPrintName('Ottavamatic')
-	end
-	if not nwcdraw.isDrawing() then return w end
 	if user:isHidden() then return end
 	local what = t.IncludeRests and 'noteOrRest' or 'note'
 	nwcdraw.setFontClass('StaffItalic')

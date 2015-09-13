@@ -1,4 +1,4 @@
--- Version 0.97
+-- Version 1.0
 
 --[[----------------------------------------------------------------
 This plugin draw a guitar chord chart and optionally strums the chord when the song is played. 

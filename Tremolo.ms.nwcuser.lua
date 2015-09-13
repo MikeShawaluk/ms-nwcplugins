@@ -1,4 +1,4 @@
--- Version 0.95
+-- Version 1.0
 
 --[[----------------------------------------------------------------
 This plugin creates two-note tremolo markings. It draws the markings, and will optionally play the notes in tremolo style.

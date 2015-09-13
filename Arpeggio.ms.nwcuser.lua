@@ -1,4 +1,4 @@
--- Version 0.95
+-- Version 1.0
 
 --[[----------------------------------------------------------------
 This plugin draws an arpeggio marking next to a chord, and can optionally play the notes in 
