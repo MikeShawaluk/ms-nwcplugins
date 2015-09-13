@@ -1,4 +1,4 @@
--- Version 0.3
+-- Version 0.4
 
 --[[----------------------------------------------------------------
 This plugin draws a trill above or below a set of notes, and optionally plays the trill.
@@ -18,6 +18,8 @@ The style of the accidental symbol, when present. The choices are 1 (plain) , 2 
 3 (above the 'tr') and 4(surrounded by parentheses). The default setting is 1.
 @Accidental
 This specifies the accidental symbol to be added. Possible values are None, Sharp, Natural, Flat or Double Flat. The default setting is None.
+@LineType
+This specifies the style of the extender line to be drawn. The choices are Wavy and Jagged, and the default setting is Wavy.
 @WhichFirst
 This determines whether the principal note or the auxiliary note should be played first in the trill. The default setting is Principal.
 @AuxiliaryOffset
@@ -35,7 +37,8 @@ local play = { nwc.ntnidx.new(), nwc.ntnidx.new() }
 
 local tr = '`_'
 local sp = '_'
-local squig = '~'
+local lineTypeList= { 'Wavy', 'Jagged' }
+local squigList = { Wavy = { '~', 1, 0 }, Jagged = { '-', .65, -1 } }
 local playNoteList = { 'Sixteenth', 'Thirtysecond', 'Sixtyfourth' }
 local playNoteDurList = { Sixteenth=4, Thirtysecond=8, Sixtyfourth=16 }
 local accList = { 'None', 'Sharp', 'Natural', 'Flat', 'Double Flat' }
@@ -49,6 +52,7 @@ local spec_Trill = {
 	{ id='EndOffset', label='End Offset', type='float', step=0.1, min=-10, max=10, default=0 },
 	{ id='AccStyle', label='Accidental Style', type='int', default=1, min=1, max=4},
 	{ id='Accidental', label='Accidental', type='enum', default=accList[1], list=accList },
+	{ id='LineType', label='Line Type', type='enum', default=lineTypeList[1], list=lineTypeList },
 	{ id='PlayNote', label='Playback Note Type', type='enum', default=playNoteList[2], list=playNoteList },
 	{ id='WhichFirst', label='Play Which First', type='enum', default=playWhichFirstList[1], list=playWhichFirstList },
 	{ id='AuxiliaryOffset', label='Auxiliary Note Offset', type='int', min=-5, max=5, default=2 },
@@ -76,13 +80,13 @@ local function draw_Trill(t)
 	local acc = accCharList[t.Accidental]
 	nwcdraw.setFontClass('StaffSymbols')
 	nwcdraw.setFontSize(nwcdraw.getFontSize()*scale)
-	local squigLen = nwcdraw.calcTextSize(squig)
+
 	local trLen = nwcdraw.calcTextSize(tr)
 	local spLen = nwcdraw.calcTextSize(sp)
 	nwcdraw.moveTo(x1, 0)
 	nwcdraw.text(tr)
 	len = len - trLen
-
+	local accLen = 0
 	if acc ~= '' then
 		local yo, sf = 0.8, 0.7
 		if t.AccStyle == 2 then yo, sf = 1.5, 0.6 end
@@ -90,15 +94,18 @@ local function draw_Trill(t)
 		if t.AccStyle == 4 then acc = '(_' .. acc .. '_)' end
 		nwcdraw.setFontSize(nwcdraw.getFontSize()*sf)
 		local ax = t.AccStyle == 3 and x1+(trLen-spLen-nwcdraw.calcTextSize(acc))*0.5 or x1+trLen
-		local accLen = t.AccStyle == 3 and 0 or nwcdraw.calcTextSize(acc)
+		accLen = t.AccStyle == 3 and 0 or nwcdraw.calcTextSize(acc)
 		nwcdraw.moveTo(ax, scale*(yo-sf))
 		nwcdraw.text(acc)
-		nwcdraw.moveTo(x1+trLen+accLen, 0)
 		len = len - accLen
 	end
 
+	nwcdraw.moveTo(x1+trLen+accLen, scale*squigList[t.LineType][3])
 	nwcdraw.setFontClass('StaffSymbols')
-	nwcdraw.setFontSize(nwcdraw.getFontSize()*scale)
+	local squig, squigScale = squigList[t.LineType][1], squigList[t.LineType][2]
+	nwcdraw.setFontSize(nwcdraw.getFontSize()*scale*squigScale)
+	local squigLen = nwcdraw.calcTextSize(squig)
+
 	len = len - spLen
 
 	if span > 0 then
