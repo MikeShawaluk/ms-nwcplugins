@@ -1,4 +1,4 @@
--- Version 0.5
+-- Version 1.0
 
 --[[----------------------------------------------------------------
 This plugin draws a trill above or below a set of notes, and optionally plays the trill.
