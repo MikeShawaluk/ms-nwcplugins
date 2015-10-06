@@ -1,13 +1,14 @@
 -- Version 1.0
 
 --[[--------------------------------------------------------------------------
-This creates a boxed label, which defaults to the current measure number when no
+This creates a boxed bar label, which defaults to the bar number when no
 text is entered.
 
 When the object is added to a score, the settings will default to those of the
-preceding BoxText object in the score, if one is present.
+preceding object in the score, if one is present.
 @Text
-Alternate text to be displayed. When blank, the current measure number is used.
+Alternate text to be displayed. When blank, the bar number of the next
+encountered bar line is used.
 @Font
 The font class to be used. The default value is StaffBold.
 @Scale
@@ -22,7 +23,7 @@ local drawidx = nwc.drawpos
 local object_spec = {
 	{ id='Text', label='Alternate Text', type='text', default='' },
 	{ id='Font', label='Font', type='enum', default='StaffBold', list=nwc.txt.TextExpressionFonts },
-    { id='Scale', label='Text Scale (%)', type='int', min=5, max=400, step=5, default=100 },
+	{ id='Scale', label='Text Scale (%)', type='int', min=5, max=400, step=5, default=100 },
 }
 
 local function setFontClassScaled(font, scale, text)
@@ -49,7 +50,7 @@ local function do_draw(t)
     local _, my = nwcdraw.getMicrons()
 	local pen = 'solid'
 	drawidx:find('next', 'bar')
-	local text = t.Text == '' and drawidx:barCounter() or t.Text
+	local text = t.Text == '' and drawidx:barCounter()+nwcdraw.getPageSetup('StartingBar') or t.Text
 	local thickness = my*.3
 
 	nwcdraw.alignText('middle', 'center')
