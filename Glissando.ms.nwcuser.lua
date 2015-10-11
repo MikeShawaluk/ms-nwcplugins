@@ -1,10 +1,10 @@
--- Version 1.1
+-- Version 1.2
 
 --[[----------------------------------------------------------------
 This will draw a glissando line between two notes, with optional text above the line. If either of the notes is a chord, the bottom notehead
 of that chord will be the starting or ending point of the line. It is strictly an ornament, and has no effect on playback.
-@Style
-Specifies the style of the glissando line: Straight or Wavy. The default setting is Straight.
+@Pen
+Specifies the type for lines: solid, dot, dash or wavy. The default setting is solid.
 @Text
 The text to appear above the glissando line, drawn in the StaffItalic system font. The default setting is "gliss."
 @Scale
@@ -19,28 +19,32 @@ This will adjust the auto-determined vertical (Y) position of the glissando's st
 This will adjust the auto-determined horizontal (X) position of the glissando's end point. The range of values is -100.00 to 100.00. The default setting is 0.
 @EndOffsetY
 This will adjust the auto-determined vertical (Y) position of the glissando's end point. The range of values is -100.00 to 100.00. The default setting is 0.
-@Pen
-Specifies the type for straight lines: solid, dot or dash. The default setting is solid.
 @Weight
 This will adjust the weight (thickness) of the straight line type. The range of values is 0.0 to 5.0, where 1 is the standard line weight. The default setting is 1.
 --]]----------------------------------------------------------------
 
 local nextNote = nwc.drawpos.new()
 local priorNote = nwc.drawpos.new()
-local glissStyle = { 'Straight', 'Wavy' }
+local lineStyles = {'solid','dot','dash','wavy'}
 local squig = '~'
 
 local spec_Glissando = {
-	{ id='Style', label='Glissando Style', type='enum', default=glissStyle[1], list=glissStyle },
+	{ id='Pen', label='Line Style', type='enum', default=lineStyles[1], list=lineStyles },
 	{ id='Text', label='Text', type='text', default='gliss.' },
     { id='Scale', label='Text Scale (%)', type='int', min=5, max=400, step=5, default=75 },
     { id='StartOffsetX', label='Start Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='StartOffsetY', label='Start Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='EndOffsetX', label='End Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='EndOffsetY', label='End Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='Pen', label='Line Type', type='enum', default='solid', list=nwc.txt.DrawPenStyle },
 	{ id='Weight', label='Line Weight', type='float', default=1, min=0, max=5, step=0.1 }
 }
+
+local function audit_Glissando(t)
+	if t.Style then
+		if (t.Style == 'Wavy') then t.Pen = 'wavy' end
+		t.Style = nil
+	end
+end
 
 local function draw_Glissando(t)
 	local xyar = nwcdraw.getAspectRatio()
@@ -69,7 +73,7 @@ local function draw_Glissando(t)
 		nwcdraw.moveTo((x1+x2)*.5, (y1+y2)*.5)
 		nwcdraw.text(text, angle)
 	end
-	if t.Style == glissStyle[1] then
+	if pen ~= 'wavy' then
 		if thickness ~= 0 then
 			nwcdraw.setPen(pen, thickness)	
 			nwcdraw.line(x1, y1, x2, y2)
@@ -92,6 +96,7 @@ end
 
 return {
 	spec = spec_Glissando,
-    spin = spin_Glissando,
+	audit = audit_Glissando,
+	spin = spin_Glissando,
 	draw = draw_Glissando
 }
