@@ -48,11 +48,10 @@ end
 local function do_draw(t)
 	local xyar = nwcdraw.getAspectRatio()
     local _, my = nwcdraw.getMicrons()
-	local pen = 'solid'
 	drawidx:find('next', 'bar')
 	local text = t.Text == '' and drawidx:barCounter()+nwcdraw.getPageSetup('StartingBar') or t.Text
 	local thickness = my*.3
-
+	nwcdraw.setPen('solid', thickness)
 	nwcdraw.alignText('middle', 'center')
 	local w, h = setFontClassScaled(t.Font, t.Scale, text)
 	local hb = h/2 + .3
