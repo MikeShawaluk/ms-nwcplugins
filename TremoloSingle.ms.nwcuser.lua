@@ -1,4 +1,4 @@
--- Version 1.0
+-- Version 1.1
 
 --[[----------------------------------------------------------------
 This object creates a single note tremolo marking. It draws the markings, and will optionally play the note in tremolo style.
@@ -27,27 +27,44 @@ Note that the tremolo note should be muted for proper playback.
 @TripletPlayback
 Specifies that the playback notes should be in triplet rhythm. This will generally be used when the tremolo 
 notes are dotted. The default setting is disabled (unchecked).
+@Which
+Specifies which split chord member (top or bottom) should receive the tremolo marking and be played. This parameter is
+ignored for non-split chords. The default setting is top.
 --]]----------------------------------------------------------------
 
 local user = nwcdraw.user
 local durations = { Eighth=1, Sixteenth=2, Thirtysecond=3, Sixtyfourth=4 }
+local whichList = { 'top', 'bottom' }
+local whichStemDirList = { top=1, bottom=-1}
+
+local spec_TremoloSingle = {
+	{ id='Beams', label='Number of Beams', type='int', default=3, min=1, max=4 },
+	{ id='Offset', label='Vertical Offset', type='float', default=0, min=-5, max=5, step=.5 },
+	{ id='Play', label='Play Notes', type='bool', default=true },
+	{ id='TripletPlayback', label='Triplet Playback', type='bool', default=false },
+	{ id='Which', label='Split Chord Member', type='enum', default=whichList[1], list=whichList },
+}
+
+local beamHeight, beamSpacing, beamHalfWidth, beamStemOffset, beamSlope = .6, 1.6, 0.55, 1, 0.6
 
 local function draw_TremoloSingle(t)
 	local _, my = nwcdraw.getMicrons()
 	local stemWeight = my*0.0126
 	local offset = t.Offset
 	local beams = t.Beams
-	local beamHeight, beamSpacing, beamHalfWidth, beamStemOffset, beamSlope = .6, 1.6, 0.55, 1, 0.6
+
 	nwcdraw.setPen('solid', stemWeight)
 	if not user:find('next', 'note') then return end
-	local stemDir = user:stemDir(1)
+	local whichVoice = t.Which == whichList[1] and user:noteCount() or 1
+
+	local stemDir = user:stemDir(whichVoice)
 	local x, ys = user:xyStemTip(stemDir)
 	local xa, ya = user:xyAlignAnchor(stemDir)
-	local d = user:durationBase(1)
+
 	local wf = x and 1 or -1
-	local j = durations[d]
+	local j = durations[user:durationBase(whichVoice)]
 	if j then
-		offset = offset + (user:isBeamed(1) and j*2-.75 or j*1.5+3.75+stemDir/4)
+		offset = offset + (user:isBeamed(whichVoice) and j*2-.75 or j*1.5+3.75+stemDir/4)
 	end	
 	x = x or xa + .65
 	ys = ys and ys-offset*stemDir or ya-(offset+2)*stemDir*wf
@@ -68,16 +85,10 @@ local function spin_TremoloSingle(t,dir)
 	t.Beams = t.Beams
 end
 
-local spec_TremoloSingle = {
-	{ id='Beams', label='Number of Beams', type='int', default=3, min=1, max=4 },
-	{ id='Offset', label='Vertical Offset', type='float', default=0, min=-5, max=5, step=.5 },
-	{ id='Play', label='Play Notes', type='bool', default=true },
-	{ id='TripletPlayback', label='Triplet Playback', type='bool', default=false }
-}
-
 local _play = nwc.ntnidx.new()
 local function play_TremoloSingle(t)
 	if not t.Play then return end
+	local whichStemDir = whichStemDirList[t.Which]
 	_play:find('next', 'note')
 	local b = t.Beams + (durations[_play:durationBase(1)] or 0)
 	local dur = nwcplay.PPQ / 2^b * (t.TripletPlayback and 2/3 or 1)	
@@ -86,7 +97,9 @@ local function play_TremoloSingle(t)
 	_play:find('prior')
 	for spp = _play:sppOffset(), fini, dur do
 		for j = 1, _play:noteCount() or 0 do
-			nwcplay.note(spp, dur, nwcplay.getNoteNumber(_play:notePitchPos(j)))
+			if not _play:isSplitVoice(j) or whichStemDir == _play:stemDir(j) then
+				nwcplay.note(spp, dur, nwcplay.getNoteNumber(_play:notePitchPos(j)))
+			end
 		end
 	end
 end
