@@ -1,7 +1,7 @@
 -- Version 1.0
 
 --[[----------------------------------------------------------------
-This object draws a crescendo or decresendo hairpin at a specified location on the score. The gap at the open
+This object draws a crescendo or decrescendo hairpin at a specified location on the score. The gap at the open
 end, line type and weight are user adjustable, as well as the horizontal and vertical positions of the end points.
 This object is ornamental only, and does not affect playback.
 
