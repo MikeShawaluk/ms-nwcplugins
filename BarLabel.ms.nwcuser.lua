@@ -1,29 +1,33 @@
--- Version 1.0
+-- Version 1.1
 
 --[[--------------------------------------------------------------------------
-This creates a boxed bar label, which defaults to the bar number when no
-text is entered.
+This creates a boxed bar label, which defaults to the referenced bar number 
+(next or prior) when no text is entered.
 
 When the object is added to a score, the settings will default to those of the
-preceding object in the score, if one is present.
+preceding BarLabel object in the score, if one is present.
 @Text
-Alternate text to be displayed. When blank, the bar number of the next
-encountered bar line is used.
+Alternate text to be displayed. When blank, the referenced bar number will be used.
 @Font
 The font class to be used. The default value is StaffBold.
 @Scale
 The scale factor for the text and box. This is a value from 5% to 400%; the
 default setting is 100%. The + and - keys will increase/decrease the value by 5%.
+@Which
+Determines which bar the label should reference, when the bar number is used
+for the label. The choices are next or prior; the default setting is next.
 --]]--------------------------------------------------------------------------
 
 local userObjTypeName = ...
 local idx = nwc.ntnidx
 local drawidx = nwc.drawpos
+local whichList = { 'next', 'prior' }
 
 local object_spec = {
 	{ id='Text', label='Alternate Text', type='text', default='' },
 	{ id='Font', label='Font', type='enum', default='StaffBold', list=nwc.txt.TextExpressionFonts },
 	{ id='Scale', label='Text Scale (%)', type='int', min=5, max=400, step=5, default=100 },
+	{ id='Which', label='Reference Which Bar', type='enum', default=whichList[1], list=whichList },
 }
 
 local function setFontClassScaled(font, scale, text)
@@ -36,6 +40,7 @@ local function do_create(t)
 	if idx:find('prior', 'user', userObjTypeName) then
 		t.Font = idx:userProp('Font')
 		t.Scale = idx:userProp('Scale')
+		t.Which = idx:userProp('Which')
 		t.Pos = idx:userProp('Pos')
 	end
 end
@@ -48,7 +53,7 @@ end
 local function do_draw(t)
 	local xyar = nwcdraw.getAspectRatio()
     local _, my = nwcdraw.getMicrons()
-	drawidx:find('next', 'bar')
+	drawidx:find(t.Which, 'bar')
 	local text = t.Text == '' and drawidx:barCounter()+nwcdraw.getPageSetup('StartingBar') or t.Text
 	local thickness = my*.3
 	nwcdraw.setPen('solid', thickness)
