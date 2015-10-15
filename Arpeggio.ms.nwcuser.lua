@@ -1,4 +1,4 @@
--- Version 1.0
+-- Version 1.1
 
 --[[----------------------------------------------------------------
 This plugin draws an arpeggio marking next to a chord, and can optionally play the notes in 
@@ -18,9 +18,9 @@ is up.
 This is used to increase or decrease the spacing between the arpeggio and its chord, and can be 
 from -5.00 to 5.00 notehead widths. Positive values shift the position to the right, negative to the 
 left. The default setting is 0. 
-@Speed
-The rate at which the arpeggio is played. The range of values is 1.0 (very slow) to 128.0 (very 
-fast), with a default setting of 32. 
+@Rate
+The rate at which the arpeggio is played, as a number of notes per whole note duration. The range of 
+values is 1.0 (very slow) to 128.0 (very fast), with a default setting of 32 (32nd notes).
 
 Note that the arpeggio rate is proportional to the score's tempo. 
 @Anticipated
@@ -80,12 +80,19 @@ local spec_Arpeggio = {
 	{ id='Side', label='Side of Chord', type='enum', default='left', list={'left', 'right'} },
 	{ id='Dir', label='Direction', type='enum', default='up', list={'up', 'down'} },
 	{ id='Offset', label='Horizontal Offset', type='float', default=0, min=-5, max=5, step=.1 },
-	{ id='Speed', label='Playback Speed', type='float', default=32, min=1, max=128 },
+	{ id='Rate', label='Arpeggio Rate', type='float', default=32, min=1, max=128 },
 	{ id='Anticipated', label='Anticipated Playback', type='bool', default=false },
 	{ id='MarkerExtend', label='Extend Arpeggio with Marker', type='bool', default=false },
 	{ id='Play', label='Play Notes', type='bool', default=true },
 	{ id='ForceArrow', label='Force Arrowhead for Up Arpeggio', type='bool', default=false }
 }
+
+local function audit_Arpeggio(t)
+	if t.Speed then
+		t.Rate = t.Speed*4
+		t.Speed = nil
+	end
+end
 
 local function draw_Arpeggio(t)
 	if not user:find('next', 'note') then return end
@@ -129,7 +136,7 @@ local function play_Arpeggio(t)
 	if duration < 1 then return end
     _play:find('prior')
 	_begin:find('first')
- 	local arpeggioShift = nwcplay.PPQ / t.Speed
+ 	local arpeggioShift = 4 * nwcplay.PPQ / t.Rate
     local startOffset = t.Anticipated and math.max(-arpeggioShift * (noteCount-1), _begin:sppOffset()) or 0
 	for i = 1, noteCount do
 		local thisShift = arpeggioShift * ((t.Dir == 'down') and noteCount-i or i-1) + startOffset
@@ -144,5 +151,6 @@ end
 return {
 	spec = spec_Arpeggio,
 	draw = draw_Arpeggio,
-	play = play_Arpeggio
+	play = play_Arpeggio,
+	audit = audit_Arpeggio,
 }
