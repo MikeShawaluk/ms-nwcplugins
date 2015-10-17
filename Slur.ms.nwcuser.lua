@@ -1,4 +1,4 @@
--- Version 1.0
+-- Version 1.1
 
 --[[----------------------------------------------------------------
 This plugin draws a solid, dashed or dotted slur with adjustable end point positions and curve shape. 
@@ -55,17 +55,17 @@ local spec_Slur = {
 	{ id='Strength', label='Strength', type='float', default=1, min=0, max=10, step=0.5 },
 }
 
-local function noteStuff(item)
+local function noteStuff(item, slurDir)
 	local opts = item:objProp('Opts') or ''
 	local stem, slur
 	local slurNote = 1
 	if item:isSplitVoice() and item:objType() ~= 'RestChord' then
-		slur = opts:match('Slur=(%a+)') or 'Upward'
-		stem = slur == 'Upward' and 'Up' or 'Down'
+		slur = slurDir == 'Default' and 'Upward' or slurDir
+		stem = slur == 'Upward' and 1 or -1
 		if slur == 'Upward' then slurNote = item:noteCount() end
 	else
-		stem = item:stemDir(slurNote)==1 and 'Up' or 'Down'
-		slur = opts:match('Slur=(%a+)') or stem == 'Up' and 'Downward' or 'Upward'
+		stem = item:stemDir(slurNote)
+		slur = slurDir == 'Default' and (opts:match('Slur=(%a+)') or stem == 1 and 'Downward' or 'Upward') or slurDir 
 	end
 	local baseNote = item:durationBase(slurNote)
 	local dotted = item:isDotted(slurNote)
@@ -96,16 +96,18 @@ local function draw_Slur(t)
 		found = endNote:find('next', 'noteOrRest')
 	end
 	if not found then return end
-	local startStem, slurDir, ya, xo1, startNotehead = noteStuff(startNote)
-	local endStem, _, _, xo2, endNotehead = noteStuff(endNote)
+	local startStem, slurDir, ya, xo1, startNotehead = noteStuff(startNote, dir)
+	local endStem, _, _, xo2, endNotehead = noteStuff(endNote, slurDir)
 	ya = ya * strength
 	if dir ~= 'Default' then slurDir = dir end
 	local startNoteYBottom, startNoteYTop = startNote:notePos(1) or 0, startNote:notePos(startNote:noteCount()) or 0
 	local endNoteYBottom, endNoteYTop = endNote:notePos(1) or 0, endNote:notePos(endNote:noteCount()) or 0	
-	local x1 = startNote:xyTimeslot()
-	local x2 = endNote:xyTimeslot()
-	x1 = x1 + startOffsetX + xo1 + ((slurDir == 'Upward' and startStem == 'Up' and startNotehead ~= 'Whole') and .75 or 0)
-	x2 = x2 + endOffsetX + xo2 - ((slurDir == 'Downward' and endStem == 'Down' and endNotehead ~= 'Whole') and .75 or 0)
+	local x1 = startNote:xyStemAnchor(startStem)
+	local x2 = endNote:xyStemAnchor(endStem)
+	if (slurDir == 'Downward' and startStem == 1) or (slurDir == 'Upward' and startStem == 1 and startNotehead == 'Whole') then xo1 = -xo1 end
+	if (slurDir == 'Upward' and endStem == -1) or (slurDir == 'Downward' and endStem == -1 and endNotehead == 'Whole') then xo2 = -xo2 end
+	x1 = x1 + startOffsetX + xo1
+	x2 = x2 + endOffsetX - xo2
 	local y1 = (slurDir == 'Upward') and startNoteYTop + startOffsetY + 1.75 or startNoteYBottom - startOffsetY - 1.75
 	local y2 = (slurDir == 'Upward') and endNoteYTop + endOffsetY + 1.75 or endNoteYBottom - endOffsetY - 1.75
 	local xa = (x1 + x2) / 2
