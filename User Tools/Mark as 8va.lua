@@ -1,10 +1,10 @@
 --[[-------------------------------------------------------------------------
-Version 0.2
+Version 0.3
 
 This NWC user tool can be used to mark a section of notes for 8va marks, by
 inserting instrument changes with transposition values. It will prompt the user
-for the type of mark to use (e.g. 8va, 8va bassa, 15ma, etc.) If the Ottavamatic.ms
-object is present, it will adjust instrument change transpose by that amount.
+for the type of mark to use (e.g. 8va, 8va bassa, 15ma, etc.) 
+It will adjust instrument change transpose by the staff transpose setting.
 
 $NWCUT$CONFIG: ClipText $
 --]]-------------------------------------------------------------------------
@@ -26,9 +26,9 @@ nwcut.setlevel(2)
 
 for item in nwcut.items() do
 	if item:IsFake() then
-		if item.ObjType == 'User' then
-			if item.UserType == 'Ottavamatic.ms' then
-				staffTrans = item.Opts.StaffTranspose or 0
+		if item.ObjType == 'Instrument' then
+			if not item.Opts.DynVel then
+				staffTrans = item.Opts.Trans
 			end
 		end
 	elseif first then
