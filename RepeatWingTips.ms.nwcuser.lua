@@ -1,4 +1,4 @@
--- Version 0.1
+-- Version 0.2
 
 --[[-----------------------------------------------------------------------------------------
 This plugin draws a bar tip on a Master Repeat Open or Close bar line.
@@ -8,6 +8,9 @@ up to the next RepeatWingTips object occurrence.
 @Scale
 The scale factor for the size of the wings. This is a value from 50% to 200%; the
 default setting is 100%. The + and - keys will increase/decrease the value by 10%.
+@Location
+Determines which locations to receive bar tips. Available options are Top, Bottom and Both,
+and the default setting is Both.
 --]]-----------------------------------------------------------------------------------------
 
 local userObjTypeName = ...
@@ -15,16 +18,25 @@ local userObjSigName = nwc.toolbox.genSigName(userObjTypeName)
 local drawpos = nwcdraw.user
 local nextObj = nwc.ntnidx.new()
 local barTypes = { MasterRepeatOpen=true, MasterRepeatClose=true }
+local locationList = { 'Both', 'Top', 'Bottom' }
+local scale
 
 local spec_RepeatWingTips = {
     { id='Scale', label='Scale (%)', type='int', min=50, max=200, step=10, default=100 },
+    { id='Location', label='Wing Location', type='enum', list=locationList, default=locationList[1] },
 }
 
 local function create_RepeatWingTips(t)
 	t.Class = 'StaffSig'
 end
 
-local function drawWings(x, y, v, h, scale)
+local function drawWings(v, h)
+	local x, y
+	if h > 0 then
+		x, y = drawpos:xyAnchor(v)
+	else
+		x, y = drawpos:xyRight(v)
+	end
 	local x2, y2 = x+h*1.5*scale, y + v*3*scale
 	local xa, ya = (x+x2)*.5+h*.5*scale, (y+y2)*.5-v*scale
 	local bw = .6
@@ -37,7 +49,8 @@ local function drawWings(x, y, v, h, scale)
 end
 
 local function draw_RepeatWingTips(t)
-	local scale = t.Scale*.01
+	local loc = t.Location
+	scale = t.Scale*.01
 	local isStaffSig = (t.Class == 'StaffSig')
 	local w = isStaffSig and nwc.toolbox.drawStaffSigLabel(userObjSigName) or 0
 	if not nwcdraw.isDrawing() then return w end
@@ -48,6 +61,7 @@ local function draw_RepeatWingTips(t)
 	nwcdraw.setPen('solid', penWidth)
 
 	if not nextObj:find('next', 'user', userObjTypeName) then nextObj:find('last') end
+	print (nextObj:objType())
 	local found = true
 	while found do
 		repeat
@@ -57,17 +71,14 @@ local function draw_RepeatWingTips(t)
 		if found and drawpos < nextObj then
 			local barType = drawpos:objProp('Style') or 'Single'
 			if barType == 'MasterRepeatOpen' then
-				x, y = drawpos:xyAnchor(-1)
-				drawWings(x, y, -1, 1, scale)
-				x, y = drawpos:xyAnchor(1)
-				drawWings(x, y, 1, 1, scale)
+				if loc ~= locationList[2] then drawWings(-1, 1) end
+				if loc ~= locationList[3] then drawWings(1, 1) end
 			elseif barType == 'MasterRepeatClose' then
-				x, y = drawpos:xyRight(-1)
-				drawWings(x, y, -1, -1, scale)
-				x, y = drawpos:xyRight(1)
-				drawWings(x, y, 1, -1, scale)
+				if loc ~= locationList[2] then drawWings(-1, -1) end
+				if loc ~= locationList[3] then drawWings(1, -1) end
 			end
 		end
+		if 
 		if not isStaffSig then return end
 	end
 end
