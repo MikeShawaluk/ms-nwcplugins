@@ -55,30 +55,23 @@ local function draw_RepeatWingTips(t)
 	local w = isStaffSig and nwc.toolbox.drawStaffSigLabel(userObjSigName) or 0
 	if not nwcdraw.isDrawing() then return w end
 	if drawpos:isHidden() then return end
-	local x, y
+	local connectBars = nwcdraw.getStaffProp('ConnectBarsWithNext')
 	local _, my = nwcdraw.getMicrons()
 	local penWidth = my*.2
 	nwcdraw.setPen('solid', penWidth)
 
 	if not nextObj:find('next', 'user', userObjTypeName) then nextObj:find('last') end
-	print (nextObj:objType())
 	local found = true
-	while found do
-		repeat
-			found = drawpos:find('next', 'bar')
-		until barTypes[drawpos:objProp('Style')] or not found
-		
-		if found and drawpos < nextObj then
-			local barType = drawpos:objProp('Style') or 'Single'
-			if barType == 'MasterRepeatOpen' then
-				if loc ~= locationList[2] then drawWings(-1, 1) end
-				if loc ~= locationList[3] then drawWings(1, 1) end
-			elseif barType == 'MasterRepeatClose' then
-				if loc ~= locationList[2] then drawWings(-1, -1) end
-				if loc ~= locationList[3] then drawWings(1, -1) end
-			end
+	while found and drawpos < nextObj do
+		found = drawpos:find('next', 'bar')
+		local barType = drawpos:objProp('Style')
+		if barType == 'MasterRepeatOpen' then
+			if loc ~= locationList[2] and not connectBars then drawWings(-1, 1) end
+			if loc ~= locationList[3] then drawWings(1, 1) end
+		elseif barType == 'MasterRepeatClose' then
+			if loc ~= locationList[2] and not connectBars then drawWings(-1, -1) end
+			if loc ~= locationList[3] then drawWings(1, -1) end
 		end
-		if 
 		if not isStaffSig then return end
 	end
 end
