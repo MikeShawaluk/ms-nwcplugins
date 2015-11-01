@@ -1,4 +1,4 @@
--- Version 0.4
+-- Version 0.5
 
 --[[-----------------------------------------------------------------------------------------
 This plugin draws a bar tip on a Master Repeat Open or Close bar line.
@@ -64,6 +64,7 @@ local function draw_RepeatWingTips(t)
 	local found = true
 	while found and drawpos < nextObj do
 		found = drawpos:find('next', 'bar')
+		if drawpos > nextObj then return end
 		local barType = drawpos:objProp('Style')
 		if barTypes[barType] and not drawpos:isHidden() then
 			if loc ~= locationList[2] and not connectBars then drawWings(-1, barType) end
