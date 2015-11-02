@@ -1,4 +1,4 @@
--- Version 0.2
+-- Version 0.3
 
 --[[-----------------------------------------------------------------------------------------
 This plugin draws cue noteheads in the positions of any blank note space noteheads on
@@ -22,7 +22,7 @@ local _spec = {
 }
 
 local function drawNotehead(ptr, i, side)
-	local noteHead = string.sub(ptr:notePitchPos(i), -1)
+	local noteHead = string.match(ptr:notePitchPos(i), '-?%d+(.)')
 	if noteHead ~= 'z' then return end
 	local dur = ptr:durationBase(i)
 	local x, y = ptr:xyStemAnchor(ptr:stemDir(i))
@@ -31,11 +31,11 @@ local function drawNotehead(ptr, i, side)
 	nwcdraw.text(dur == 'Whole' and 'i' or dur == 'Half' and 'j' or 'k')
 end
 
-local function drawCuesLoop(ptr, first, last, stemDir, side)
-	local dist
-	drawNotehead(ptr, first-stemDir, side)
+local function drawCuesLoop(ptr, first, last, stemDir)
+	local side, dist = -stemDir
+	drawNotehead(ptr, first, side)
 	if last ~= first then 
-		for i = first, last, stemDir do
+		for i = first+stemDir, last, stemDir do
 			dist = (ptr:notePos(i) - ptr:notePos(i-stemDir))*stemDir
 			if dist == 1 then
 				side = -side
@@ -50,19 +50,18 @@ end
 
 local function drawCues(ptr)
 	local noteCount, first, last, stemDir = ptr:noteCount()
-	
 	if ptr:isSplitVoice() and ptr:objType() ~= 'RestChord' then
 		local split
 		for i=2, noteCount do
 			if ptr:stemDir(i) ~= ptr:stemDir(i-1) then split = i end
 		end
-		drawCuesLoop(ptr, split, noteCount, 1, 1)
-		drawCuesLoop(ptr, split-1, 1, -1, -1)
+		drawCuesLoop(ptr, split, noteCount, 1)
+		drawCuesLoop(ptr, split-1, 1, -1)
 	else
 		stemDir = ptr:stemDir(1)
-		first, last = 2, noteCount
-		if stemDir < 0 then first, last = noteCount-1, 1 end
-		drawCuesLoop(ptr, first, last, stemDir, -stemDir)
+		first, last = 1, noteCount
+		if stemDir < 0 then first, last = last, first end
+		drawCuesLoop(ptr, first, last, stemDir)
 	end
 end
 
