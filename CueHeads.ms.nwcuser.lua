@@ -1,4 +1,4 @@
--- Version 0.1
+-- Version 0.2
 
 --[[-----------------------------------------------------------------------------------------
 This plugin draws cue noteheads in the positions of any blank note space noteheads on
@@ -25,31 +25,47 @@ local function drawNotehead(ptr, i, side)
 	local noteHead = string.sub(ptr:notePitchPos(i), -1)
 	if noteHead ~= 'z' then return end
 	local dur = ptr:durationBase(i)
-	local x, y = ptr:xyStemAnchor()
+	local x, y = ptr:xyStemAnchor(ptr:stemDir(i))
 	nwcdraw.alignText('baseline', side > 0 and 'left' or 'right')
 	nwcdraw.moveTo(x, ptr:notePos(i))
 	nwcdraw.text(dur == 'Whole' and 'i' or dur == 'Half' and 'j' or 'k')
 end
 
-local function drawCues(ptr)
-	local sd, nc = ptr:stemDir(1), ptr:noteCount()
-	local i1, i2 = 2, nc
-	if sd < 0 then i1, i2 = i2-1, i1-1 end
-	
-	local side, dist = -sd
-	drawNotehead(ptr, i1-sd, side)
-	if nc > 1 then 
-		for i = i1, i2, sd do
-			dist = (ptr:notePos(i) - ptr:notePos(i-sd))*sd
+local function drawCuesLoop(ptr, first, last, stemDir, side)
+	local dist
+	drawNotehead(ptr, first-stemDir, side)
+	if last ~= first then 
+		for i = first, last, stemDir do
+			dist = (ptr:notePos(i) - ptr:notePos(i-stemDir))*stemDir
 			if dist == 1 then
 				side = -side
 			elseif dist >= 2 then
-				side = -sd
+				side = -stemDir
 			end
 			drawNotehead(ptr, i, side)
 		end
 	end
+
 end
+
+local function drawCues(ptr)
+	local noteCount, first, last, stemDir = ptr:noteCount()
+	
+	if ptr:isSplitVoice() and ptr:objType() ~= 'RestChord' then
+		local split
+		for i=2, noteCount do
+			if ptr:stemDir(i) ~= ptr:stemDir(i-1) then split = i end
+		end
+		drawCuesLoop(ptr, split, noteCount, 1, 1)
+		drawCuesLoop(ptr, split-1, 1, -1, -1)
+	else
+		stemDir = ptr:stemDir(1)
+		first, last = 2, noteCount
+		if stemDir < 0 then first, last = noteCount-1, 1 end
+		drawCuesLoop(ptr, first, last, stemDir, -stemDir)
+	end
+end
+
 local function _draw(t)
 	local isStaffSig = (t.Class == 'StaffSig')
 	local w = isStaffSig and nwc.toolbox.drawStaffSigLabel(userObjSigName) or 0
