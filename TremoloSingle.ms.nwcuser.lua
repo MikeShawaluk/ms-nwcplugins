@@ -1,4 +1,4 @@
--- Version 1.1
+-- Version 1.2
 
 --[[----------------------------------------------------------------
 This object creates a single note tremolo marking. It draws the markings, and will optionally play the note in tremolo style.
@@ -29,7 +29,7 @@ Specifies that the playback notes should be in triplet rhythm. This will general
 notes are dotted. The default setting is disabled (unchecked).
 @Which
 Specifies which split chord member (top or bottom) should receive the tremolo marking and be played. This parameter is
-ignored for non-split chords. The default setting is top.
+ignored for non-split chords and rest chords. The default setting is top.
 --]]----------------------------------------------------------------
 
 local user = nwcdraw.user
@@ -88,8 +88,8 @@ end
 local _play = nwc.ntnidx.new()
 local function play_TremoloSingle(t)
 	if not t.Play then return end
-	local whichStemDir = whichStemDirList[t.Which]
 	_play:find('next', 'note')
+	local whichStemDir = _play:objType() == 'RestChord' and _play:stemDir(1) or whichStemDirList[t.Which]
 	local b = t.Beams + (durations[_play:durationBase(1)] or 0)
 	local dur = nwcplay.PPQ / 2^b * (t.TripletPlayback and 2/3 or 1)	
 	_play:find('next')
