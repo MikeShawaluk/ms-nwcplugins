@@ -1,4 +1,4 @@
--- Version 1.2
+-- Version 1.3
 
 --[[----------------------------------------------------------------
 This will draw a glissando line between two notes, with optional text above the line. If either of the notes is a chord, the bottom notehead
@@ -20,12 +20,12 @@ This will adjust the auto-determined horizontal (X) position of the glissando's 
 @EndOffsetY
 This will adjust the auto-determined vertical (Y) position of the glissando's end point. The range of values is -100.00 to 100.00. The default setting is 0.
 @Weight
-This will adjust the weight (thickness) of the straight line type. The range of values is 0.0 to 5.0, where 1 is the standard line weight. The default setting is 1.
+This will adjust the weight (thickness) of both straight and wavy line types. The range of values is 0.0 to 5.0, where 1 is the standard line weight. The default setting is 1.
 --]]----------------------------------------------------------------
 
 local nextNote = nwc.drawpos.new()
 local priorNote = nwc.drawpos.new()
-local lineStyles = {'solid','dot','dash','wavy'}
+local lineStyles = { 'solid', 'dot', 'dash', 'wavy' }
 local squig = '~'
 
 local spec_Glissando = {
@@ -49,9 +49,8 @@ end
 local function draw_Glissando(t)
 	local xyar = nwcdraw.getAspectRatio()
     local _, my = nwcdraw.getMicrons()
-	local pen = t.Pen
-	local text = t.Text
-	local thickness = my*.3*t.Weight
+	local pen, text, weight = t.Pen, t.Text, t.Weight
+	local thickness = my*.3*weight
 	local xo, yo = .25, .5
 	
 	if not priorNote:find('prior', 'note') then return end
@@ -81,6 +80,7 @@ local function draw_Glissando(t)
 	else
 		nwcdraw.alignText('baseline', 'left')
 		nwcdraw.setFontClass('StaffSymbols')
+		nwcdraw.setFontSize(nwcdraw.getFontSize()*weight)
 		local w = nwcdraw.calcTextSize(squig)
 		local len = math.sqrt((y2-y1)^2 + ((x2-x1)*xyar)^2)
 		local count = math.floor(len/w/xyar)
