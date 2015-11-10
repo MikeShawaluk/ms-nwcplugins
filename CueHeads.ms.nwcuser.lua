@@ -1,4 +1,4 @@
--- Version 0.3
+-- Version 0.4
 
 --[[-----------------------------------------------------------------------------------------
 This plugin draws cue noteheads in the positions of any blank note space noteheads on
@@ -16,6 +16,8 @@ local userObjTypeName = ...
 local userObjSigName = nwc.toolbox.genSigName(userObjTypeName)
 local drawpos = nwcdraw.user
 local nextObj = nwc.ntnidx.new()
+local alignSide = { [1]='right', [-1]='left' }
+local noteHeadChar = { Whole='i', Half='j', Other='k' }
 
 local _spec = {
     { id='Size', label='Notehead Size (%)', type='int', min=50, max=90, step=10, default=70 },
@@ -26,13 +28,14 @@ local function drawNotehead(ptr, i, side)
 	if noteHead ~= 'z' then return end
 	local dur = ptr:durationBase(i)
 	local x, y = ptr:xyStemAnchor(ptr:stemDir(i))
-	nwcdraw.alignText('baseline', side > 0 and 'left' or 'right')
+	nwcdraw.alignText('baseline', alignSide[side])
 	nwcdraw.moveTo(x, ptr:notePos(i))
-	nwcdraw.text(dur == 'Whole' and 'i' or dur == 'Half' and 'j' or 'k')
+	nwcdraw.text(noteHeadChar[dur] or noteHeadChar.Other)
 end
 
 local function drawCuesLoop(ptr, first, last, stemDir)
-	local side, dist = -stemDir
+	local side, dist = stemDir
+	if stemDir < 0 then first, last = last, first end
 	drawNotehead(ptr, first, side)
 	if last ~= first then 
 		for i = first+stemDir, last, stemDir do
@@ -40,7 +43,7 @@ local function drawCuesLoop(ptr, first, last, stemDir)
 			if dist == 1 then
 				side = -side
 			elseif dist >= 2 then
-				side = -stemDir
+				side = stemDir
 			end
 			drawNotehead(ptr, i, side)
 		end
@@ -49,19 +52,16 @@ local function drawCuesLoop(ptr, first, last, stemDir)
 end
 
 local function drawCues(ptr)
-	local noteCount, first, last, stemDir = ptr:noteCount()
+	local noteCount = ptr:noteCount()
 	if ptr:isSplitVoice() and ptr:objType() ~= 'RestChord' then
 		local split
-		for i=2, noteCount do
+		for i = 2, noteCount do
 			if ptr:stemDir(i) ~= ptr:stemDir(i-1) then split = i end
 		end
 		drawCuesLoop(ptr, split, noteCount, 1)
-		drawCuesLoop(ptr, split-1, 1, -1)
+		drawCuesLoop(ptr, 1, split-1, -1)
 	else
-		stemDir = ptr:stemDir(1)
-		first, last = 1, noteCount
-		if stemDir < 0 then first, last = last, first end
-		drawCuesLoop(ptr, first, last, stemDir)
+		drawCuesLoop(ptr, 1, noteCount, ptr:stemDir(1))
 	end
 end
 
