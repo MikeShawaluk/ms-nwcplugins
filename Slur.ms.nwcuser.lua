@@ -105,11 +105,14 @@ local function draw_Slur(t)
 	if dir ~= 0 then slurDir = dir end
 	local x1, y1, x2, y2
 	local startObjType, endObjType = startNote:objType(), endNote:objType()
-	if startObjType == 'Rest' or (startObjType == 'RestChord' and startStem == slurDir) then
-		local yo = startObjType == 'Rest' and 4 or 2
+	if startObjType == 'Rest' then
+		local xl, yl = startNote:xyAnchor()
+		local xr, yr = startNote:xyRight()
+		x1, y1 = (xl + xr) * .5 + startOffsetX, yl + startOffsetY + slurDir * 4
+	elseif startObjType == 'RestChord' and startStem == slurDir then
 		local xl, yl = startNote:xyAnchor(startStem)
 		local xr, yr = startNote:xyRight(startStem)
-		x1, y1 = (xl + xr) * .5 + startOffsetX, yl + startOffsetY + slurDir * yo
+		x1, y1 = (xl + xr) * .5 + startOffsetX, yl + startOffsetY + slurDir * 2
 	else
 		local startNoteYBottom, startNoteYTop = startNote:notePos(1) or 0, startNote:notePos(startNote:noteCount()) or 0
 		x1 = startNote:xyStemAnchor(startStem) or startNote:xyRight(startStem)
@@ -117,11 +120,14 @@ local function draw_Slur(t)
 		x1 = x1 + startOffsetX + xo1
 		y1 = (slurDir == 1) and startNoteYTop + startOffsetY + 1.75 or startNoteYBottom - startOffsetY - 1.75
 	end
-	if endObjType == 'Rest' or (endObjType == 'RestChord' and endStem == slurDir) then
-		local yo = endObjType == 'Rest' and 4 or 2
+	if endObjType == 'Rest' then
+		local xl, yl = endNote:xyAnchor()
+		local xr, yr = endNote:xyRight()
+		x2, y2 = (xl + xr) * .5 + endOffsetX, yl + endOffsetY + slurDir * 4
+	elseif endObjType == 'RestChord' and endStem == slurDir then
 		local xl, yl = endNote:xyAnchor(endStem)
 		local xr, yr = endNote:xyRight(endStem)
-		x2, y2 = (xl + xr) * .5 + endOffsetX, yl + endOffsetY + slurDir * yo
+		x2, y2 = (xl + xr) * .5 + endOffsetX, yl + endOffsetY + slurDir * 2
 	else
 		local endNoteYBottom, endNoteYTop = endNote:notePos(1) or 0, endNote:notePos(endNote:noteCount()) or 0
 		x2 = endNote:xyStemAnchor(endStem) or endNote:xyAnchor(endStem)
