@@ -1,4 +1,4 @@
--- Version 1.1
+-- Version 1.2
 
 --[[----------------------------------------------------------------
 This plugin draws a solid, dashed or dotted slur with adjustable end point positions and curve shape. 
@@ -21,7 +21,8 @@ from the starting note's Slur Direction property, which in turn is based on the 
 and ending notes. When set to Upward or Downward, the slur direction is set explicitly.
 
 Note that upward slurs are positioned at the top notes of the starting and ending chords, while downward 
-slurs are positioned at the bottom notes.
+slurs are positioned at the bottom notes. For starting or ending rests, the default endpoints will be the same
+as for normal slurs.
 @StartOffsetX
 This will adjust the auto-determined horizontal (X) position of the slur's start point. The range of values 
 is -100.00 to 100.00. The default setting is 0.
@@ -43,6 +44,7 @@ values a steeper curve. A value of 0 results in a straight line. The default set
 local user = nwcdraw.user
 local startNote = nwc.drawpos.new()
 local endNote = nwc.drawpos.new()
+local dirNum = { Default=0, Upward=1, Downward=-1 }
 
 local spec_Slur = {
 	{ id='Span', label='Note Span', type='int', default=2, min=2 },
@@ -57,18 +59,18 @@ local spec_Slur = {
 
 local function noteStuff(item, slurDir)
 	local opts = item:objProp('Opts') or ''
-	local stem, slur
+	local stem, slur, baseNote, dotted
 	local slurNote = 1
 	if item:isSplitVoice() and item:objType() ~= 'RestChord' then
-		slur = slurDir == 'Default' and 'Upward' or slurDir
-		stem = slur == 'Upward' and 1 or -1
-		if slur == 'Upward' then slurNote = item:noteCount() end
+		slur = slurDir == 0 and 1 or slurDir
+		stem = slur
+		if slur == 1 then slurNote = item:noteCount() end
+		baseNote, dotted = item:durationBase(slurNote), item:isDotted(slurNote)
 	else
-		stem = item:stemDir(slurNote)
-		slur = slurDir == 'Default' and (opts:match('Slur=(%a+)') or stem == 1 and 'Downward' or 'Upward') or slurDir 
+		baseNote, dotted = item:durationBase(), item:isDotted()
+		stem = item:stemDir()
+		slur = slurDir == 0 and (dirNum[opts:match('Slur=(%a+)')] or -stem) or slurDir 
 	end
-	local baseNote = item:durationBase(slurNote)
-	local dotted = item:isDotted(slurNote)
 	local arcPitch, noteheadOffset = 3.75, .5
 	if baseNote == 'Whole' and dotted then
 		arcPitch, noteheadOffset = 7.75, .65
@@ -85,7 +87,7 @@ local function draw_Slur(t)
 	local solidPenWidth, dotDashPenWidth = my*0.12, my*.375
 	local span = t.Span
 	local pen = t.Pen
-	local dir = t.Dir
+	local dir = dirNum[t.Dir]
 	local strength = t.Strength
 	local startOffsetX, startOffsetY = t.StartOffsetX, t.StartOffsetY
 	local endOffsetX, endOffsetY = t.EndOffsetX, t.EndOffsetY
@@ -98,20 +100,37 @@ local function draw_Slur(t)
 	if not found then return end
 	local startStem, slurDir, ya, xo1, startNotehead = noteStuff(startNote, dir)
 	local endStem, _, _, xo2, endNotehead = noteStuff(endNote, slurDir)
+
 	ya = ya * strength
-	if dir ~= 'Default' then slurDir = dir end
-	local startNoteYBottom, startNoteYTop = startNote:notePos(1) or 0, startNote:notePos(startNote:noteCount()) or 0
-	local endNoteYBottom, endNoteYTop = endNote:notePos(1) or 0, endNote:notePos(endNote:noteCount()) or 0	
-	local x1 = startNote:xyStemAnchor(startStem)
-	local x2 = endNote:xyStemAnchor(endStem)
-	if (slurDir == 'Downward' and startStem == 1) or (slurDir == 'Upward' and startStem == 1 and startNotehead == 'Whole') then xo1 = -xo1 end
-	if (slurDir == 'Upward' and endStem == -1) or (slurDir == 'Downward' and endStem == -1 and endNotehead == 'Whole') then xo2 = -xo2 end
-	x1 = x1 + startOffsetX + xo1
-	x2 = x2 + endOffsetX - xo2
-	local y1 = (slurDir == 'Upward') and startNoteYTop + startOffsetY + 1.75 or startNoteYBottom - startOffsetY - 1.75
-	local y2 = (slurDir == 'Upward') and endNoteYTop + endOffsetY + 1.75 or endNoteYBottom - endOffsetY - 1.75
-	local xa = (x1 + x2) / 2
-	ya = (y1 + y2) / 2 + ((slurDir == 'Upward') and ya or -ya)
+	if dir ~= 0 then slurDir = dir end
+	local x1, y1, x2, y2
+	local startObjType, endObjType = startNote:objType(), endNote:objType()
+	if startObjType == 'Rest' or (startObjType == 'RestChord' and startStem == slurDir) then
+		local yo = startObjType == 'Rest' and 4 or 2
+		local xl, yl = startNote:xyAnchor(startStem)
+		local xr, yr = startNote:xyRight(startStem)
+		x1, y1 = (xl + xr) * .5 + startOffsetX, yl + startOffsetY + slurDir * yo
+	else
+		local startNoteYBottom, startNoteYTop = startNote:notePos(1) or 0, startNote:notePos(startNote:noteCount()) or 0
+		x1 = startNote:xyStemAnchor(startStem) or startNote:xyRight(startStem)
+		if (slurDir == -1 and startStem == 1) or (slurDir == 1 and startStem == 1 and startNotehead == 'Whole') then xo1 = -xo1 end
+		x1 = x1 + startOffsetX + xo1
+		y1 = (slurDir == 1) and startNoteYTop + startOffsetY + 1.75 or startNoteYBottom - startOffsetY - 1.75
+	end
+	if endObjType == 'Rest' or (endObjType == 'RestChord' and endStem == slurDir) then
+		local yo = endObjType == 'Rest' and 4 or 2
+		local xl, yl = endNote:xyAnchor(endStem)
+		local xr, yr = endNote:xyRight(endStem)
+		x2, y2 = (xl + xr) * .5 + endOffsetX, yl + endOffsetY + slurDir * yo
+	else
+		local endNoteYBottom, endNoteYTop = endNote:notePos(1) or 0, endNote:notePos(endNote:noteCount()) or 0
+		x2 = endNote:xyStemAnchor(endStem) or endNote:xyAnchor(endStem)
+		if (slurDir == 1 and endStem == -1) or (slurDir == 1 and endStem == -1 and endNotehead == 'Whole') then xo2 = -xo2 end
+		x2 = x2 + endOffsetX - xo2
+		y2 = (slurDir == 1) and endNoteYTop + endOffsetY + 1.75 or endNoteYBottom - endOffsetY - 1.75
+	end
+	local xa = (x1 + x2) * .5
+	ya = (y1 + y2) * .5 + slurDir * ya
 	nwcdraw.moveTo(x1, y1)
 	if t.Pen == 'solid' then
 		local bw = startNote:isGrace() and .2 or .3
