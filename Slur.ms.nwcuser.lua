@@ -93,7 +93,6 @@ local function draw_Slur(t)
 	local startOffsetX, startOffsetY = t.StartOffsetX, t.StartOffsetY
 	local endOffsetX, endOffsetY = t.EndOffsetX, t.EndOffsetY
 	startNote:find('next', 'noteOrRest')
-	if not startNote then return end
 	for i = 1, span do
 		if not endNote:find('next', 'noteOrRest') then return end
 	end
