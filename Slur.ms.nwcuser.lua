@@ -44,12 +44,13 @@ values a steeper curve. A value of 0 results in a straight line. The default set
 local user = nwcdraw.user
 local startNote = nwc.drawpos.new()
 local endNote = nwc.drawpos.new()
+local dirList = { 'Default', 'Upward', 'Downward' }
 local dirNum = { Default=0, Upward=1, Downward=-1 }
 
 local spec_Slur = {
 	{ id='Span', label='Note Span', type='int', default=2, min=2 },
 	{ id='Pen', label='Line Type', type='enum', default='solid', list=nwc.txt.DrawPenStyle },
-	{ id='Dir', label='Direction', type='enum', default='Default', list=nwc.txt.TieDir },
+	{ id='Dir', label='Direction', type='enum', default='Default', list=dirList },
 	{ id='StartOffsetX', label='Start Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='StartOffsetY', label='Start Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='EndOffsetX', label='End Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
@@ -62,13 +63,13 @@ local function noteStuff(item, slurDir)
 	local stem, slur, baseNote, dotted
 	local slurNote = 1
 	if item:isSplitVoice() and item:objType() ~= 'RestChord' then
-		slur = slurDir == 0 and 1 or slurDir
-		stem = slur
+		slur = slurDir == 0 and item:stemDir() or slurDir
 		if slur == 1 then slurNote = item:noteCount() end
+		stem = item:stemDir(slurNote)
 		baseNote, dotted = item:durationBase(slurNote), item:isDotted(slurNote)
 	else
-		baseNote, dotted = item:durationBase(), item:isDotted()
 		stem = item:stemDir()
+		baseNote, dotted = item:durationBase(), item:isDotted()
 		slur = slurDir == 0 and (dirNum[opts:match('Slur=(%a+)')] or -stem) or slurDir 
 	end
 	local arcPitch, noteheadOffset = 3.75, .5
@@ -93,11 +94,9 @@ local function draw_Slur(t)
 	local endOffsetX, endOffsetY = t.EndOffsetX, t.EndOffsetY
 	startNote:find('next', 'noteOrRest')
 	if not startNote then return end
-	local found
 	for i = 1, span do
-		found = endNote:find('next', 'noteOrRest')
+		if not endNote:find('next', 'noteOrRest') then return end
 	end
-	if not found then return end
 	local startStem, slurDir, ya, xo1, startNotehead = noteStuff(startNote, dir)
 	local endStem, _, _, xo2, endNotehead = noteStuff(endNote, slurDir)
 
