@@ -1,4 +1,4 @@
--- Version 0.1
+-- Version 0.11
 
 --[[----------------------------------------------------------------
 This plugin draws a solid, dashed or dotted slur with adjustable end point positions and curve shape. 
@@ -39,6 +39,9 @@ is -100.00 to 100.00. The default setting is 0.
 This will adjust the strength (shape) of the curve. The range of values is 0.00 to 10.00, where a value 
 of 1 is the auto-determined curve strength. Lower values will result in a shallower curve, and stronger 
 values a steeper curve. A value of 0 results in a straight line. The default setting is 1.
+@Pitch
+This adjusts the pitch (sharpness) of the ends of the curve. The range of values is 0.00 to 0.50, and
+the default setting is 0.25.
 --]]----------------------------------------------------------------
 
 local user = nwcdraw.user
@@ -53,22 +56,20 @@ local showAnchors = false
 local adjustParam = 1
 
 local menu_Slur = {
-	{ type='command', name='&Show Anchors', disable=false },
 	{ type='choice', name='&Adjust Parameter', default=nil, list=paramNameList, disable=false },
 }
 
 local function menuInit_Slur(t)
-	menu_Slur[1].checkmark = showAnchors
-	menu_Slur[2].default = paramNameList[adjustParam]
+	menu_Slur[1].default = paramNameList[adjustParam]
 end
 
 local function menuClick_Slur(t, menu, choice)
-	local m = menu_Slur[menu]
-	if m.type == 'command' then
-		showAnchors = not showAnchors
-	else
-		adjustParam = choice
-	end
+	adjustParam = choice
+	showAnchors = true
+end
+
+local function audit_Slur(t)
+	showAnchors = false
 end
 
 local spec_Slur = {
@@ -80,7 +81,7 @@ local spec_Slur = {
 	{ id='EndOffsetX', label='End Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='EndOffsetY', label='End Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='Strength', label='Strength', type='float', default=1, min=0, max=10, step=0.1 },
-	{ id='Pitch', label='Pitch', type='float', default=0.5, min=0, max=0.5, step=0.01 },
+	{ id='Pitch', label='Pitch', type='float', default=0.25, min=0, max=0.5, step=0.01 },
 }
 
 local function box(x, y)
@@ -207,4 +208,5 @@ return {
 	menu = menu_Slur,
 	menuInit = menuInit_Slur,
 	menuClick = menuClick_Slur,
+	audit = audit_Slur,
 }
