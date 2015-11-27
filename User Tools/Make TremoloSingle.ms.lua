@@ -1,5 +1,5 @@
 --[[-------------------------------------------------------------------------
-Version 0.1
+Version 0.2
 
 This NWC user tool can be used to convert one or more note/chords into
 single-note tremolos, by inserting a TremoloSingle.ms object before each.
@@ -8,12 +8,13 @@ $NWCUT$CONFIG: ClipText $
 --]]-------------------------------------------------------------------------
 
 -- we want to work with basic text for most lines
-nwcut.setlevel(1)
+nwcut.setlevel(2)
 local addCount = 0
 local beams = nwcut.prompt('Number of Beams:', '#[1-4]', 3)
 
-local function plural(value)
-	return value == 0 and 'No' or tostring(value), value == 1 and '' or 's'
+local function warnline(string, value)
+	local s1, s2 = value == 0 and 'No' or tostring(value), value == 1 and '' or 's'
+	nwcut.warn(string.format(string .. '\n', s1, s2))
 end
 
 for item in nwcut.items() do
@@ -21,12 +22,12 @@ for item in nwcut.items() do
 		-- don't process these
 	elseif item:ContainsNotes() then
 		local user = nwcItem.new('|User|TremoloSingle.ms')
-		user:Provide("Beams", beams)
-		user:Provide("Pos", 0)
+		user.Opts.Pos = 0
+		user.Opts.Beams = beams
 		nwcut.writeline(user)
 		addCount = addCount + 1
 	end
 	nwcut.writeline(item)
 end
 
-nwcut.warn(string.format('%s TremoloSingle.ms object%s added.\n', plural(addCount)))
+warnline('%s TremoloSingle.ms object%s will be added.', addCount)
