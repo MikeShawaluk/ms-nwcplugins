@@ -1,4 +1,4 @@
--- Version 1.1
+-- Version 1.2
 
 --[[----------------------------------------------------------------
 This plugin draws an arpeggio marking next to a chord, and can optionally play the notes in 
@@ -136,7 +136,7 @@ local function play_Arpeggio(t)
 	if duration < 1 then return end
     _play:find('prior')
 	_begin:find('first')
- 	local arpeggioShift = 4 * nwcplay.PPQ / t.Rate
+ 	local arpeggioShift = math.min(4 * nwcplay.PPQ / t.Rate, duration / noteCount)
     local startOffset = t.Anticipated and math.max(-arpeggioShift * (noteCount-1), _begin:sppOffset()) or 0
 	for i = 1, noteCount do
 		local thisShift = arpeggioShift * ((t.Dir == 'down') and noteCount-i or i-1) + startOffset
