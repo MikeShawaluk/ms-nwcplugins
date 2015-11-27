@@ -1,4 +1,4 @@
--- Version 1.2
+-- Version 1.3
 
 --[[----------------------------------------------------------------
 This plugin draws a solid, dashed or dotted slur with adjustable end point positions and curve shape. 
@@ -39,6 +39,9 @@ is -100.00 to 100.00. The default setting is 0.
 This will adjust the strength (shape) of the curve. The range of values is 0.00 to 10.00, where a value 
 of 1 is the auto-determined curve strength. Lower values will result in a shallower curve, and stronger 
 values a steeper curve. A value of 0 results in a straight line. The default setting is 1.
+@Balance
+This will adjust the left-right balance of the curve. The range of values is -.50 to +.50, where a value 
+of 0 is the default (center) balance setting.
 --]]----------------------------------------------------------------
 
 local user = nwcdraw.user
@@ -46,6 +49,28 @@ local startNote = nwc.drawpos.new()
 local endNote = nwc.drawpos.new()
 local dirList = { 'Default', 'Upward', 'Downward' }
 local dirNum = { Default=0, Upward=1, Downward=-1 }
+local paramNameList = { '&Span', 'Start Offset &X', 'Start Offset &Y', 'End Offset &X', 'End Offset &Y', 'S&trength', '&Balance' }
+local paramIdList = { 'Span', 'StartOffsetX', 'StartOffsetY', 'EndOffsetX', 'EndOffsetY', 'Strength', 'Balance' }
+local paramIncList = { 1, .1, .1, .1, .1, .25, .05 }
+local showAnchors = false
+local adjustParam = 1
+
+local menu_Slur = {
+	{ type='choice', name='&Adjust Parameter', default=nil, list=nil, disable=false },
+}
+
+local function menuInit_Slur(t)
+	menu_Slur[1].list = {}
+	for k, v in ipairs(paramIdList) do
+		menu_Slur[1].list[k] = string.format('%s (%s)', paramNameList[k], t[v])
+	end
+	menu_Slur[1].default = menu_Slur[1].list[adjustParam]
+end
+
+local function menuClick_Slur(t, menu, choice)
+	adjustParam = choice
+	showAnchors = true
+end
 
 local spec_Slur = {
 	{ id='Span', label='Note Span', type='int', default=2, min=2 },
@@ -55,8 +80,18 @@ local spec_Slur = {
 	{ id='StartOffsetY', label='Start Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='EndOffsetX', label='End Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='EndOffsetY', label='End Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='Strength', label='Strength', type='float', default=1, min=0, max=10, step=0.5 },
+	{ id='Strength', label='Strength', type='float', default=1, min=0, max=10, step=0.25 },
+	{ id='Balance', label='Balance', type='float', default=0, min=-.5, max=.5, step=0.05 },
 }
+
+local function box(x, y, p1, p2)
+	local m = (adjustParam == p1 or adjustParam == p2) and 'strokeandfill' or 'stroke'
+	nwcdraw.setPen('solid', 100)
+	nwcdraw.moveTo(x, y)
+	nwcdraw.beginPath()
+	nwcdraw.roundRect(0.2)
+	nwcdraw.endPath(m)
+end
 
 local function noteStuff(item, slurDir)
 	local opts = item:objProp('Opts') or ''
@@ -90,6 +125,7 @@ local function draw_Slur(t)
 	local pen = t.Pen
 	local dir = dirNum[t.Dir]
 	local strength = t.Strength
+	local balance = t.Balance + .5
 	local startOffsetX, startOffsetY = t.StartOffsetX, t.StartOffsetY
 	local endOffsetX, endOffsetY = t.EndOffsetX, t.EndOffsetY
 	startNote:find('next', 'noteOrRest')
@@ -99,7 +135,6 @@ local function draw_Slur(t)
 	local startStem, slurDir, ya, xo1, startNotehead = noteStuff(startNote, dir)
 	local endStem, _, _, xo2, endNotehead = noteStuff(endNote, slurDir)
 
-	ya = ya * strength
 	if dir ~= 0 then slurDir = dir end
 	local x1, y1, x2, y2
 	local startObjType, endObjType = startNote:objType(), endNote:objType()
@@ -133,8 +168,8 @@ local function draw_Slur(t)
 		x2 = x2 + endOffsetX - xo2
 		y2 = (slurDir == 1) and endNoteYTop + endOffsetY + 1.75 or endNoteYBottom - endOffsetY - 1.75
 	end
-	local xa = (x1 + x2) * .5
-	ya = (y1 + y2) * .5 + slurDir * ya
+	local xa = x1 + (x2-x1) * balance
+	ya = y1 + (y2-y1) * balance + slurDir * ya * strength
 	nwcdraw.moveTo(x1, y1)
 	if t.Pen == 'solid' then
 		local bw = startNote:isGrace() and .2 or .3
@@ -147,15 +182,26 @@ local function draw_Slur(t)
 		nwcdraw.setPen(t.Pen, dotDashPenWidth)
 		nwcdraw.bezier(xa, ya, x2, y2)
 	end
+	if showAnchors then
+		box(x1, y1, 2, 3)
+		box(xa, ya, 6, 7)
+		box(x2, y2, 4, 5)
+	end
+	showAnchors = false
 end
 
 local function spin_Slur(t, d)
-	t.Span = t.Span + d
-	t.Span = t.Span
+	showAnchors = true
+	local x = paramIdList[adjustParam] or 1
+	t[x] = t[x] + d*paramIncList[adjustParam]
+	t[x] = t[x]
 end
 
 return {
 	spec = spec_Slur,
 	spin = spin_Slur,
-	draw = draw_Slur
+	draw = draw_Slur,
+	menu = menu_Slur,
+	menuInit = menuInit_Slur,
+	menuClick = menuClick_Slur,
 }
