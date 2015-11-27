@@ -1,4 +1,4 @@
--- Version 0.96x
+-- Version 1.4x
 
 --[[----------------------------------------------------------------
 This plugin draws a solid, dashed or dotted slur with adjustable end point positions and curve shape. 
@@ -21,7 +21,8 @@ from the starting note's Slur Direction property, which in turn is based on the 
 and ending notes. When set to Upward or Downward, the slur direction is set explicitly.
 
 Note that upward slurs are positioned at the top notes of the starting and ending chords, while downward 
-slurs are positioned at the bottom notes.
+slurs are positioned at the bottom notes. For starting or ending rests, the default endpoints will be the same
+as for normal slurs.
 @StartOffsetX
 This will adjust the auto-determined horizontal (X) position of the slur's start point. The range of values 
 is -100.00 to 100.00. The default setting is 0.
@@ -38,83 +39,87 @@ is -100.00 to 100.00. The default setting is 0.
 This will adjust the strength (shape) of the curve. The range of values is 0.00 to 10.00, where a value 
 of 1 is the auto-determined curve strength. Lower values will result in a shallower curve, and stronger 
 values a steeper curve. A value of 0 results in a straight line. The default setting is 1.
+@Balance
+This will adjust the left-right balance of the curve. The range of values is -.50 to +.50, where a value 
+of 0 is the default (center) balance setting.
 --]]----------------------------------------------------------------
 
 local user = nwcdraw.user
 local startNote = nwc.drawpos.new()
 local endNote = nwc.drawpos.new()
+local dirList = { 'Default', 'Upward', 'Downward' }
+local dirNum = { Default=0, Upward=1, Downward=-1 }
+local paramNameList = { '&Span', 'Start Offset &X', 'Start Offset &Y', 'End Offset &X', 'End Offset &Y', 'S&trength', '&Balance' }
+local paramIdList = { 'Span', 'StartOffsetX', 'StartOffsetY', 'EndOffsetX', 'EndOffsetY', 'Strength', 'Balance' }
+local paramIncList = { 1, .1, .1, .1, .1, .25, .05 }
+local showAnchors = false
+local adjustParam = 1
 
-local dtt = { int='#[%s,%s]', float='#.#[%s,%s]' }
+local menu_Slur = {
+	{ type='choice', name='&Adjust Parameter', default=nil, list=nil, disable=false },
+}
 
-local menu_Slur = {}
+local function menuInit_Slur(t)
+	menu_Slur[1].list = {}
+	for k, v in ipairs(paramIdList) do
+		menu_Slur[1].list[k] = string.format('%s (%s)', paramNameList[k], t[v])
+	end
+	menu_Slur[1].default = menu_Slur[1].list[adjustParam]
+end
+
+local function menuClick_Slur(t, menu, choice)
+	adjustParam = choice
+	showAnchors = true
+end
 
 local spec_Slur = {
 	{ id='Span', label='Note Span', type='int', default=2, min=2 },
 	{ id='Pen', label='Line Type', type='enum', default='solid', list=nwc.txt.DrawPenStyle },
-	{ id='Dir', label='Direction', type='enum', default='Default', list=nwc.txt.TieDir },
+	{ id='Dir', label='Direction', type='enum', default='Default', list=dirList },
 	{ id='StartOffsetX', label='Start Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='StartOffsetY', label='Start Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='EndOffsetX', label='End Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='EndOffsetY', label='End Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='Strength', label='Strength', type='float', default=1, min=0, max=10, step=0.5 },
+	{ id='Strength', label='Strength', type='float', default=1, min=0, max=10, step=0.25 },
+	{ id='Balance', label='Balance', type='float', default=0, min=-.5, max=.5, step=0.05 },
 }
 
-for k, s in ipairs(spec_Slur) do
-	local a = {	name=s.label, disable=false, data=k }
-	if s.type == 'bool' then
-		a.type = 'command'
-	else
-		a.type = 'choice'
-		a.list = s.type == 'enum' and s.list or { '', 'Change...' }
-	end
-	menu_Slur[#menu_Slur+1] = a
-end
+local boxTable = {
+	{ 2, 3, 'right', -0.5, 0 },
+	{ 6, 7, 'center', 0, 2 },
+	{ 4, 5, 'left', 0.5, 0 },
+}
 
-local function menuInit_Slur(t)
-	for _, m in ipairs(menu_Slur) do
-		local s = spec_Slur[m.data]
-		local v = t[s.id]
-		if m.type == 'command' then
-			m.checkmark = v
-		else
-			if s.type ~= 'enum' then
-				m.list[1] = v
-			end
-			m.default = v
-		end
+local function box(x, y, which, t, dir)
+	local bt = boxTable[which]
+	local p1, p2 = bt[1], bt[2]
+	nwcdraw.setPen('solid', 100)
+	nwcdraw.moveTo(x, y)
+	nwcdraw.roundRect(0.2)
+	if (adjustParam == p1 or adjustParam == p2) then
+		local v1, v2 = paramIdList[p1], paramIdList[p2]
+		nwcdraw.setFont('Arial', 3, 'ri')
+		nwcdraw.alignText('middle', bt[3])
+		nwcdraw.opaqueMode(true)
+		nwcdraw.moveTo(x+bt[4], y+bt[5]*dir)
+		nwcdraw.text(string.format('(%s, %s)', t[v1], t[v2]))
 	end
 end
 
-local function menuClick_Slur(t, menu, choice)
-	local m = menu_Slur[menu]
-	local s = spec_Slur[m.data]
-	local v = t[s.id]
-	if m.type == 'command' then
-		t[s.id] = not v
-	else
-		if s.type == 'enum' then
-			t[s.id] = m.list[choice]
-		elseif choice ~= 1 then
-			local dt = s.type == 'text' and '*' or string.format(dtt[s.type], s.min or -100, s.max or 100)
-			t[s.id] = nwcui.prompt(string.format('Enter %s:', string.gsub(s.label, '&', '')), dt, v)
-		end
-	end
-end
-
-local function noteStuff(item)
+local function noteStuff(item, slurDir)
 	local opts = item:objProp('Opts') or ''
-	local stem, slur
+	local stem, slur, baseNote, dotted
 	local slurNote = 1
 	if item:isSplitVoice() and item:objType() ~= 'RestChord' then
-		slur = opts:match('Slur=(%a+)') or 'Upward'
-		stem = slur == 'Upward' and 'Up' or 'Down'
-		if slur == 'Upward' then slurNote = item:noteCount() end
+		slur = slurDir == 0 and item:stemDir() or slurDir
+		if slur == 1 then slurNote = item:noteCount() end
+		stem = item:stemDir(slurNote)
+		baseNote, dotted = item:durationBase(slurNote), item:isDotted(slurNote)
 	else
-		stem = item:stemDir(slurNote)==1 and 'Up' or 'Down'
-		slur = opts:match('Slur=(%a+)') or stem == 'Up' and 'Downward' or 'Upward'
+		stem = item:stemDir()
+		baseNote, dotted = item:durationBase(), item:isDotted()
+		slur = slurDir == 0 and (dirNum[opts:match('Slur=(%a+)')] or -stem) or slurDir 
 	end
-	local baseNote = item:durationBase(slurNote)
-	local dotted = item:isDotted(slurNote)
 	local arcPitch, noteheadOffset = 3.75, .5
 	if baseNote == 'Whole' and dotted then
 		arcPitch, noteheadOffset = 7.75, .65
@@ -131,31 +136,53 @@ local function draw_Slur(t)
 	local solidPenWidth, dotDashPenWidth = my*0.12, my*.375
 	local span = t.Span
 	local pen = t.Pen
-	local dir = t.Dir
+	local dir = dirNum[t.Dir]
 	local strength = t.Strength
+	local balance = t.Balance + .5
 	local startOffsetX, startOffsetY = t.StartOffsetX, t.StartOffsetY
 	local endOffsetX, endOffsetY = t.EndOffsetX, t.EndOffsetY
 	startNote:find('next', 'noteOrRest')
-	if not startNote then return end
-	local found
 	for i = 1, span do
-		found = endNote:find('next', 'noteOrRest')
+		if not endNote:find('next', 'noteOrRest') then return end
 	end
-	if not found then return end
-	local startStem, slurDir, ya, xo1, startNotehead = noteStuff(startNote)
-	local endStem, _, _, xo2, endNotehead = noteStuff(endNote)
-	ya = ya * strength
-	if dir ~= 'Default' then slurDir = dir end
-	local startNoteYBottom, startNoteYTop = startNote:notePos(1) or 0, startNote:notePos(startNote:noteCount()) or 0
-	local endNoteYBottom, endNoteYTop = endNote:notePos(1) or 0, endNote:notePos(endNote:noteCount()) or 0	
-	local x1 = startNote:xyTimeslot()
-	local x2 = endNote:xyTimeslot()
-	x1 = x1 + startOffsetX + xo1 + ((slurDir == 'Upward' and startStem == 'Up' and startNotehead ~= 'Whole') and .75 or 0)
-	x2 = x2 + endOffsetX + xo2 - ((slurDir == 'Downward' and endStem == 'Down' and endNotehead ~= 'Whole') and .75 or 0)
-	local y1 = (slurDir == 'Upward') and startNoteYTop + startOffsetY + 1.75 or startNoteYBottom - startOffsetY - 1.75
-	local y2 = (slurDir == 'Upward') and endNoteYTop + endOffsetY + 1.75 or endNoteYBottom - endOffsetY - 1.75
-	local xa = (x1 + x2) / 2
-	ya = (y1 + y2) / 2 + ((slurDir == 'Upward') and ya or -ya)
+	local startStem, slurDir, ya, xo1, startNotehead = noteStuff(startNote, dir)
+	local endStem, _, _, xo2, endNotehead = noteStuff(endNote, slurDir)
+
+	if dir ~= 0 then slurDir = dir end
+	local x1, y1, x2, y2
+	local startObjType, endObjType = startNote:objType(), endNote:objType()
+	if startObjType == 'Rest' then
+		local xl, yl = startNote:xyAnchor()
+		local xr, yr = startNote:xyRight()
+		x1, y1 = (xl + xr) * .5 + startOffsetX, yl + startOffsetY + slurDir * 4
+	elseif startObjType == 'RestChord' and startStem == slurDir then
+		local xl, yl = startNote:xyAnchor(startStem)
+		local xr, yr = startNote:xyRight(startStem)
+		x1, y1 = (xl + xr) * .5 + startOffsetX, yl + startOffsetY + slurDir * 2
+	else
+		local startNoteYBottom, startNoteYTop = startNote:notePos(1) or 0, startNote:notePos(startNote:noteCount()) or 0
+		x1 = startNote:xyStemAnchor(startStem) or startNote:xyRight(startStem)
+		if (slurDir == -1 and startStem == 1) or (slurDir == 1 and startStem == 1 and startNotehead == 'Whole') then xo1 = -xo1 end
+		x1 = x1 + startOffsetX + xo1
+		y1 = (slurDir == 1) and startNoteYTop + startOffsetY + 1.75 or startNoteYBottom - startOffsetY - 1.75
+	end
+	if endObjType == 'Rest' then
+		local xl, yl = endNote:xyAnchor()
+		local xr, yr = endNote:xyRight()
+		x2, y2 = (xl + xr) * .5 + endOffsetX, yl + endOffsetY + slurDir * 4
+	elseif endObjType == 'RestChord' and endStem == slurDir then
+		local xl, yl = endNote:xyAnchor(endStem)
+		local xr, yr = endNote:xyRight(endStem)
+		x2, y2 = (xl + xr) * .5 + endOffsetX, yl + endOffsetY + slurDir * 2
+	else
+		local endNoteYBottom, endNoteYTop = endNote:notePos(1) or 0, endNote:notePos(endNote:noteCount()) or 0
+		x2 = endNote:xyStemAnchor(endStem) or endNote:xyAnchor(endStem)
+		if (slurDir == 1 and endStem == -1) or (slurDir == 1 and endStem == -1 and endNotehead == 'Whole') then xo2 = -xo2 end
+		x2 = x2 + endOffsetX - xo2
+		y2 = (slurDir == 1) and endNoteYTop + endOffsetY + 1.75 or endNoteYBottom - endOffsetY - 1.75
+	end
+	local xa = x1 + (x2-x1) * balance
+	ya = y1 + (y2-y1) * balance + slurDir * ya * strength
 	nwcdraw.moveTo(x1, y1)
 	if t.Pen == 'solid' then
 		local bw = startNote:isGrace() and .2 or .3
@@ -168,11 +195,19 @@ local function draw_Slur(t)
 		nwcdraw.setPen(t.Pen, dotDashPenWidth)
 		nwcdraw.bezier(xa, ya, x2, y2)
 	end
+	if showAnchors then
+		box(x1, y1, 1, t, slurDir)
+		box(xa, ya, 2, t, slurDir)
+		box(x2, y2, 3, t, slurDir)
+	end
+	showAnchors = false
 end
 
 local function spin_Slur(t, d)
-	t.Span = t.Span + d
-	t.Span = t.Span
+	showAnchors = true
+	local x = paramIdList[adjustParam] or 1
+	t[x] = t[x] + d*paramIncList[adjustParam]
+	t[x] = t[x]
 end
 
 return {
