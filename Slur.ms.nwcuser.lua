@@ -1,4 +1,4 @@
--- Version 1.3
+-- Version 1.4
 
 --[[----------------------------------------------------------------
 This plugin draws a solid, dashed or dotted slur with adjustable end point positions and curve shape. 
@@ -36,7 +36,7 @@ is -100.00 to 100.00. The default setting is 0.
 This will adjust the auto-determined vertical (Y) position of the slur's end point. The range of values 
 is -100.00 to 100.00. The default setting is 0.
 @Strength
-This will adjust the strength (shape) of the curve. The range of values is 0.00 to 10.00, where a value 
+This will adjust the strength (shape) of the curve. The range of values is 0.00 to 100.00, where a value 
 of 1 is the auto-determined curve strength. Lower values will result in a shallower curve, and stronger 
 values a steeper curve. A value of 0 results in a straight line. The default setting is 1.
 @Balance
@@ -52,24 +52,22 @@ local dirNum = { Default=0, Upward=1, Downward=-1 }
 local paramNameList = { '&Span', 'Start Offset &X', 'Start Offset &Y', 'End Offset &X', 'End Offset &Y', 'S&trength', '&Balance' }
 local paramIdList = { 'Span', 'StartOffsetX', 'StartOffsetY', 'EndOffsetX', 'EndOffsetY', 'Strength', 'Balance' }
 local paramIncList = { 1, .1, .1, .1, .1, .25, .05 }
-local showAnchors = false
-local adjustParam = 1
 
 local menu_Slur = {
 	{ type='choice', name='&Adjust Parameter', default=nil, list=nil, disable=false },
 }
 
 local function menuInit_Slur(t)
+	local ap = tonumber(t.ap)
 	menu_Slur[1].list = {}
 	for k, v in ipairs(paramIdList) do
 		menu_Slur[1].list[k] = string.format('%s (%s)', paramNameList[k], t[v])
 	end
-	menu_Slur[1].default = menu_Slur[1].list[adjustParam]
+	menu_Slur[1].default = menu_Slur[1].list[ap]
 end
 
 local function menuClick_Slur(t, menu, choice)
-	adjustParam = choice
-	showAnchors = true
+	t.ap = choice
 end
 
 local spec_Slur = {
@@ -80,12 +78,20 @@ local spec_Slur = {
 	{ id='StartOffsetY', label='Start Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='EndOffsetX', label='End Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='EndOffsetY', label='End Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='Strength', label='Strength', type='float', default=1, min=0, max=10, step=0.25 },
+	{ id='Strength', label='Strength', type='float', default=1, min=0, max=100, step=0.25 },
 	{ id='Balance', label='Balance', type='float', default=0, min=-.5, max=.5, step=0.05 },
 }
 
-local function box(x, y, p1, p2)
-	local m = (adjustParam == p1 or adjustParam == p2) and 'strokeandfill' or 'stroke'
+local function value(t, x1, x2, x3)
+	return (1-t)^2 * x1 + 2*(1-t)*t * x2 + t^2 * x3
+end
+
+local function point(t, x1, y1, x2, y2, x3, y3)
+	return value(t, x1, x2, x3), value(t, y1, y2, y3)
+end
+
+local function box(x, y, p1, p2, ap)
+	local m = (ap == p1 or ap == p2) and 'strokeandfill' or 'stroke'
 	nwcdraw.setPen('solid', 100)
 	nwcdraw.moveTo(x, y)
 	nwcdraw.beginPath()
@@ -130,7 +136,7 @@ local function draw_Slur(t)
 	local endOffsetX, endOffsetY = t.EndOffsetX, t.EndOffsetY
 	startNote:find('next', 'noteOrRest')
 	for i = 1, span do
-		if not endNote:find('next', 'noteOrRest') then return end
+		if not endNote:find('next', 'noteOrRest') then break end
 	end
 	local startStem, slurDir, ya, xo1, startNotehead = noteStuff(startNote, dir)
 	local endStem, _, _, xo2, endNotehead = noteStuff(endNote, slurDir)
@@ -182,19 +188,25 @@ local function draw_Slur(t)
 		nwcdraw.setPen(t.Pen, dotDashPenWidth)
 		nwcdraw.bezier(xa, ya, x2, y2)
 	end
-	if showAnchors then
-		box(x1, y1, 2, 3)
-		box(xa, ya, 6, 7)
-		box(x2, y2, 4, 5)
+	if t.ap then
+		local ap = tonumber(t.ap)
+		local xb, yb = point(balance, x1, y1, xa, ya, x2, y2)
+		box(x1, y1, 2, 3, ap)
+		box(xb, yb, 6, 7, ap)
+		box(x2, y2, 4, 5, ap)
 	end
-	showAnchors = false
 end
 
 local function spin_Slur(t, d)
-	showAnchors = true
-	local x = paramIdList[adjustParam] or 1
-	t[x] = t[x] + d*paramIncList[adjustParam]
+	t.ap = t.ap or 1
+	local ap = tonumber(t.ap)
+	local x = paramIdList[ap]
+	t[x] = t[x] + d*paramIncList[ap]
 	t[x] = t[x]
+end
+
+local function audit_Slur(t)
+	t.ap = nil
 end
 
 return {
@@ -204,4 +216,5 @@ return {
 	menu = menu_Slur,
 	menuInit = menuInit_Slur,
 	menuClick = menuClick_Slur,
+	audit = audit_Slur,
 }
