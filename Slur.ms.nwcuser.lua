@@ -1,4 +1,4 @@
--- Version 1.4x
+-- Version 1.5x
 
 --[[----------------------------------------------------------------
 This plugin draws a solid, dashed or dotted slur with adjustable end point positions and curve shape. 
@@ -52,8 +52,6 @@ local dirNum = { Default=0, Upward=1, Downward=-1 }
 local paramNameList = { '&Span', 'Start Offset &X', 'Start Offset &Y', 'End Offset &X', 'End Offset &Y', 'S&trength', '&Balance' }
 local paramIdList = { 'Span', 'StartOffsetX', 'StartOffsetY', 'EndOffsetX', 'EndOffsetY', 'Strength', 'Balance' }
 local paramIncList = { 1, .1, .1, .1, .1, .25, .05 }
-local showAnchors = false
-local adjustParam = 1
 
 local menu_Slur = {
 	{ type='choice', name='&Adjust Parameter', default=nil, list=nil, disable=false },
@@ -68,8 +66,7 @@ local function menuInit_Slur(t)
 end
 
 local function menuClick_Slur(t, menu, choice)
-	adjustParam = choice
-	showAnchors = true
+	t.ap = choice
 end
 
 local spec_Slur = {
@@ -91,12 +88,13 @@ local boxTable = {
 }
 
 local function box(x, y, which, t, dir)
+	local ap = tonumber(t.ap)
 	local bt = boxTable[which]
 	local p1, p2 = bt[1], bt[2]
 	nwcdraw.setPen('solid', 100)
 	nwcdraw.moveTo(x, y)
 	nwcdraw.roundRect(0.2)
-	if (adjustParam == p1 or adjustParam == p2) then
+	if (ap == p1 or ap == p2) then
 		local v1, v2 = paramIdList[p1], paramIdList[p2]
 		nwcdraw.setFont('Arial', 3, 'ri')
 		nwcdraw.alignText('middle', bt[3])
@@ -195,19 +193,22 @@ local function draw_Slur(t)
 		nwcdraw.setPen(t.Pen, dotDashPenWidth)
 		nwcdraw.bezier(xa, ya, x2, y2)
 	end
-	if showAnchors then
+	if t.ap then
 		box(x1, y1, 1, t, slurDir)
 		box(xa, ya, 2, t, slurDir)
 		box(x2, y2, 3, t, slurDir)
 	end
-	showAnchors = false
 end
 
 local function spin_Slur(t, d)
-	showAnchors = true
-	local x = paramIdList[adjustParam] or 1
-	t[x] = t[x] + d*paramIncList[adjustParam]
+	local ap = tonumber(t.ap) or 1
+	local x = paramIdList[ap]
+	t[x] = t[x] + d*paramIncList[ap]
 	t[x] = t[x]
+end
+
+local function audit_Slur(t)
+	t.ap = nil
 end
 
 return {
@@ -217,4 +218,5 @@ return {
 	menu = menu_Slur,
 	menuInit = menuInit_Slur,
 	menuClick = menuClick_Slur,
+	audit = audit_Slur,
 }
