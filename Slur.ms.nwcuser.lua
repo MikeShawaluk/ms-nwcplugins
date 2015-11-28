@@ -49,38 +49,47 @@ local startNote = nwc.drawpos.new()
 local endNote = nwc.drawpos.new()
 local dirList = { 'Default', 'Upward', 'Downward' }
 local dirNum = { Default=0, Upward=1, Downward=-1 }
-local paramNameList = { '&Span', 'Start Offset &X', 'Start Offset &Y', 'End Offset &X', 'End Offset &Y', 'S&trength', '&Balance' }
-local paramIdList = { 'Span', 'StartOffsetX', 'StartOffsetY', 'EndOffsetX', 'EndOffsetY', 'Strength', 'Balance' }
-local paramIncList = { 1, .1, .1, .1, .1, .25, .05 }
+
+local spec_Slur = {
+	{ id='Span', label='&Note Span', type='int', default=2, min=2, step=1 },
+	{ id='Pen', label='&Line Type', type='enum', default='solid', list=nwc.txt.DrawPenStyle },
+	{ id='Dir', label='&Direction', type='enum', default='Default', list=dirList },
+	{ id='StartOffsetX', label='Start Offset &X', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='StartOffsetY', label='Start Offset &Y', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='EndOffsetX', label='End Offset &X', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='EndOffsetY', label='End Offset &Y', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='Strength', label='&Strength', type='float', default=1, min=0, max=100, step=0.25 },
+	{ id='Balance', label='&Balance', type='float', default=0, min=-.5, max=.5, step=0.05 },
+}
 
 local menu_Slur = {
-	{ type='choice', name='&Adjust Parameter', default=nil, list=nil, disable=false },
+	{ type='command', name='Choose Spin Target:', disable=true }
 }
+
+for k, s in ipairs(spec_Slur) do
+	local a = {	name=s.label, disable=false, data=k }
+	if s.type ~= 'enum' then
+		a.separator = k == 1
+		a.type = 'command'
+		menu_Slur[#menu_Slur+1] = a
+	end
+end
 
 local function menuInit_Slur(t)
 	local ap = tonumber(t.ap)
-	menu_Slur[1].list = {}
-	for k, v in ipairs(paramIdList) do
-		menu_Slur[1].list[k] = string.format('%s (%s)', paramNameList[k], t[v])
+	for k, m in ipairs(menu_Slur) do
+		if m.data then
+			local s = spec_Slur[m.data]
+			local v = t[s.id]
+			m.checkmark = (k == ap)
+			m.name = string.format('%s (%s)', s.label, v)
+		end
 	end
-	menu_Slur[1].default = menu_Slur[1].list[ap]
 end
 
 local function menuClick_Slur(t, menu, choice)
-	t.ap = choice
+	t.ap = menu
 end
-
-local spec_Slur = {
-	{ id='Span', label='Note Span', type='int', default=2, min=2 },
-	{ id='Pen', label='Line Type', type='enum', default='solid', list=nwc.txt.DrawPenStyle },
-	{ id='Dir', label='Direction', type='enum', default='Default', list=dirList },
-	{ id='StartOffsetX', label='Start Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='StartOffsetY', label='Start Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='EndOffsetX', label='End Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='EndOffsetY', label='End Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='Strength', label='Strength', type='float', default=1, min=0, max=100, step=0.25 },
-	{ id='Balance', label='Balance', type='float', default=0, min=-.5, max=.5, step=0.05 },
-}
 
 local function value(t, x1, x2, x3)
 	return (1-t)^2 * x1 + 2*(1-t)*t * x2 + t^2 * x3
@@ -191,17 +200,17 @@ local function draw_Slur(t)
 	if t.ap then
 		local ap = tonumber(t.ap)
 		local xb, yb = point(0.1+(0.8*balance), x1, y1, xa, ya, x2, y2)
-		box(x1, y1, 2, 3, ap)
-		box(xb, yb, 6, 7, ap)
-		box(x2, y2, 4, 5, ap)
+		box(x1, y1, 3, 4, ap)
+		box(xb, yb, 7, 8, ap)
+		box(x2, y2, 5, 6, ap)
 	end
 end
 
 local function spin_Slur(t, d)
-	t.ap = t.ap or 1
-	local ap = tonumber(t.ap)
-	local x = paramIdList[ap]
-	t[x] = t[x] + d*paramIncList[ap]
+	t.ap = t.ap or 2
+	local y = menu_Slur[tonumber(t.ap)].data
+	local x = spec_Slur[y].id
+	t[x] = t[x] + d*spec_Slur[y].step
 	t[x] = t[x]
 end
 
