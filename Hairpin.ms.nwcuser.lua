@@ -1,4 +1,4 @@
--- Version 1.0
+-- Version 1.1
 
 --[[----------------------------------------------------------------
 This object draws a crescendo or decrescendo hairpin at a specified location on the score. The gap at the open
@@ -35,15 +35,72 @@ local user = nwcdraw.user
 local typeList = { 'cresc', 'decresc' }
 
 local spec_Hairpin = {
-	{ id='Type', label='Type', type='enum', default=typeList[1], list=typeList },
-	{ id='Span', label='Note Span', type='int', default=1, min=1, max=100 },
-	{ id='Pen', label='Line Style', type='enum', default='solid', list=nwc.txt.DrawPenStyle },
-	{ id='StartOffsetX', label='Start Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='EndOffsetX', label='End Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='EndOffsetY', label='End Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='Gap', label='Gap Height', type='float', default=2.5, min=0, max=100, step=0.5 },
-	{ id='Weight', label='Line Weight', type='float', default=1, min=0, max=5, step=0.1 },
+	{ id='Span', label='&Note Span', type='int', default=1, min=1, max=100, step=1 },
+	{ id='Type', label='&Type', type='enum', default=typeList[1], list=typeList },
+	{ id='Pen', label='Line &Style', type='enum', default='solid', list=nwc.txt.DrawPenStyle },
+	{ id='StartOffsetX', label='Start Offset &X', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='EndOffsetX', label='End Offset &X', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='EndOffsetY', label='End Offset &Y', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='Gap', label='&Gap Height', type='float', default=2.5, min=0, max=100, step=0.5 },
+	{ id='Weight', label='Line &Weight', type='float', default=1, min=0, max=5, step=0.1 },
 }
+
+local menu_Hairpin = {
+	{ type='command', name='Choose Spin Target:', disable=true }
+}
+
+for k, s in ipairs(spec_Hairpin) do
+	local a = {	name=s.label, disable=false, data=k }
+	if s.type ~= 'enum' then
+		a.separator = k == 1
+		a.type = 'command'
+		menu_Hairpin[#menu_Hairpin+1] = a
+	end
+end
+for k, s in ipairs(spec_Hairpin) do
+	local a = {	name=s.label, disable=false, data=k }
+	if s.type == 'enum' then
+		a.separator = k == 2
+		a.type = 'choice'
+		a.list = s.list
+		menu_Hairpin[#menu_Hairpin+1] = a
+	end
+end
+
+local function menuInit_Hairpin(t)
+	local ap = tonumber(t.ap)
+	for k, m in ipairs(menu_Hairpin) do
+		if m.data then
+			local s = spec_Hairpin[m.data]
+			local v = t[s.id]
+			if m.type == 'command' then
+				m.checkmark = (k == ap)
+				m.name = string.format('%s (%s)', s.label, v)
+			else
+				m.default = v
+			end
+		end
+	end
+end
+
+local function menuClick_Hairpin(t, menu, choice)
+	if choice then
+		local m = menu_Hairpin[menu]
+		local s = spec_Hairpin[m.data]
+		t[s.id] = m.list[choice]
+	else
+		t.ap = menu
+	end
+end
+
+local function box(x, y, p1, p2, p3, ap)
+	local m = (ap == p1 or ap == p2 or ap == p3) and 'strokeandfill' or 'stroke'
+	nwcdraw.setPen('solid', 100)
+	nwcdraw.moveTo(x, y)
+	nwcdraw.beginPath()
+	nwcdraw.roundRect(0.2)
+	nwcdraw.endPath(m)
+end
 
 local function draw_Hairpin(t)
 	local _, my = nwcdraw.getMicrons()
@@ -72,15 +129,37 @@ local function draw_Hairpin(t)
 	if hairpintype == typeList[1] then rightgap = gap / 2 else leftgap = gap / 2 end
 	nwcdraw.line(x1+leftoffset, -leftgap, x2, rightoffset_y - rightgap)
 	nwcdraw.line(x1+leftoffset, leftgap, x2, rightoffset_y + rightgap)
+	
+	if t.ap then
+		local ap = tonumber(t.ap)
+		local gl = hairpintype == typeList[1] and 6 or 0
+		local gr = hairpintype ~= typeList[1] and 6 or 0
+		box(x1+leftoffset, -leftgap, 3, 0, gr, ap)
+		box(x1+leftoffset, leftgap, 3, 0, gr, ap)
+		box(x2, rightoffset_y - rightgap, 4, 5, gl, ap)
+		box(x2, rightoffset_y + rightgap, 4, 5, gl, ap)
+	end
+	
 end
 
-local function spin_Hairpin(t, dir)
-	t.Span = t.Span + dir
-	t.Span = t.Span
+local function spin_Hairpin(t, d)
+	t.ap = t.ap or 2
+	local y = menu_Hairpin[tonumber(t.ap)].data
+	local x = spec_Hairpin[y].id
+	t[x] = t[x] + d*spec_Hairpin[y].step
+	t[x] = t[x]
+end
+
+local function audit_Hairpin(t)
+	t.ap = nil
 end
 
 return {
 	spin = spin_Hairpin,
 	spec = spec_Hairpin,
-	draw = draw_Hairpin
+	draw = draw_Hairpin,
+	menu = menu_Hairpin,
+	menuInit = menuInit_Hairpin,
+	menuClick = menuClick_Hairpin,
+	audit = audit_Hairpin,
 }
