@@ -190,7 +190,7 @@ local function draw_Slur(t)
 	end
 	if t.ap then
 		local ap = tonumber(t.ap)
-		local xb, yb = point(balance, x1, y1, xa, ya, x2, y2)
+		local xb, yb = point(0.1+(0.8*balance), x1, y1, xa, ya, x2, y2)
 		box(x1, y1, 2, 3, ap)
 		box(xb, yb, 6, 7, ap)
 		box(x2, y2, 4, 5, ap)
