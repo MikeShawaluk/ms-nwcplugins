@@ -1,4 +1,4 @@
--- Version 1.5x
+-- Version 1.51x
 
 --[[----------------------------------------------------------------
 This plugin draws a solid, dashed or dotted slur with adjustable end point positions and curve shape. 
@@ -58,11 +58,12 @@ local menu_Slur = {
 }
 
 local function menuInit_Slur(t)
+	local ap = tonumber(t.ap)
 	menu_Slur[1].list = {}
 	for k, v in ipairs(paramIdList) do
 		menu_Slur[1].list[k] = string.format('%s (%s)', paramNameList[k], t[v])
 	end
-	menu_Slur[1].default = menu_Slur[1].list[adjustParam]
+	menu_Slur[1].default = menu_Slur[1].list[ap]
 end
 
 local function menuClick_Slur(t, menu, choice)
@@ -82,26 +83,30 @@ local spec_Slur = {
 }
 
 local boxTable = {
-	{ 2, 3, 'right', -0.5, 0 },
-	{ 6, 7, 'center', 0, 2 },
-	{ 4, 5, 'left', 0.5, 0 },
+	{ 2, 3 },
+	{ 6, 7 },
+	{ 4, 5 },
 }
+
+local function value(t, x1, x2, x3)
+	return (1-t)^2 * x1 + 2*(1-t)*t * x2 + t^2 * x3
+end
+
+local function point(t, x1, y1, x2, y2, x3, y3)
+	return
+		value(t, x1, x2, x3),
+		value(t, y1, y2, y3)
+end
 
 local function box(x, y, which, t, dir)
 	local ap = tonumber(t.ap)
 	local bt = boxTable[which]
-	local p1, p2 = bt[1], bt[2]
+	local m = (ap == bt[1] or ap == bt[2]) and 'strokeandfill' or 'stroke'
 	nwcdraw.setPen('solid', 100)
 	nwcdraw.moveTo(x, y)
+	nwcdraw.beginPath()
 	nwcdraw.roundRect(0.2)
-	if (ap == p1 or ap == p2) then
-		local v1, v2 = paramIdList[p1], paramIdList[p2]
-		nwcdraw.setFont('Arial', 3, 'ri')
-		nwcdraw.alignText('middle', bt[3])
-		nwcdraw.opaqueMode(true)
-		nwcdraw.moveTo(x+bt[4], y+bt[5]*dir)
-		nwcdraw.text(string.format('(%s, %s)', t[v1], t[v2]))
-	end
+	nwcdraw.endPath(m)
 end
 
 local function noteStuff(item, slurDir)
@@ -194,8 +199,9 @@ local function draw_Slur(t)
 		nwcdraw.bezier(xa, ya, x2, y2)
 	end
 	if t.ap then
+		local xb, yb = point(balance, x1, y1, xa, ya, x2, y2)
 		box(x1, y1, 1, t, slurDir)
-		box(xa, ya, 2, t, slurDir)
+		box(xb, yb, 2, t, slurDir)
 		box(x2, y2, 3, t, slurDir)
 	end
 end
