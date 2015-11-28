@@ -49,11 +49,9 @@ local startNote = nwc.drawpos.new()
 local endNote = nwc.drawpos.new()
 local dirList = { 'Default', 'Upward', 'Downward' }
 local dirNum = { Default=0, Upward=1, Downward=-1 }
-local paramIdList = { 'Span', 'StartOffsetX', 'StartOffsetY', 'EndOffsetX', 'EndOffsetY', 'Strength', 'Balance' }
-local paramIncList = { 1, .1, .1, .1, .1, .25, .05 }
 
 local spec_Slur = {
-	{ id='Span', label='&Note Span', type='int', default=2, min=2 },
+	{ id='Span', label='&Note Span', type='int', default=2, min=2, step=1 },
 	{ id='Pen', label='&Line Type', type='enum', default='solid', list=nwc.txt.DrawPenStyle },
 	{ id='Dir', label='&Direction', type='enum', default='Default', list=dirList },
 	{ id='StartOffsetX', label='Start Offset &X', type='float', step=0.1, min=-100, max=100, default=0 },
@@ -65,7 +63,7 @@ local spec_Slur = {
 }
 
 local menu_Slur = {
-	{ type='command', name='Adjust Parameters:', disable=true }
+	{ type='command', name='Choose Spin Target:', disable=true }
 }
 
 for k, s in ipairs(spec_Slur) do
@@ -90,7 +88,7 @@ local function menuInit_Slur(t)
 end
 
 local function menuClick_Slur(t, menu, choice)
-	t.ap = menu - 1
+	t.ap = menu
 end
 
 local function value(t, x1, x2, x3)
@@ -202,17 +200,17 @@ local function draw_Slur(t)
 	if t.ap then
 		local ap = tonumber(t.ap)
 		local xb, yb = point(0.1+(0.8*balance), x1, y1, xa, ya, x2, y2)
-		box(x1, y1, 2, 3, ap)
-		box(xb, yb, 6, 7, ap)
-		box(x2, y2, 4, 5, ap)
+		box(x1, y1, 3, 4, ap)
+		box(xb, yb, 7, 8, ap)
+		box(x2, y2, 5, 6, ap)
 	end
 end
 
 local function spin_Slur(t, d)
-	t.ap = t.ap or 1
-	local ap = tonumber(t.ap)
-	local x = paramIdList[ap]
-	t[x] = t[x] + d*paramIncList[ap]
+	t.ap = t.ap or 2
+	local y = menu_Slur[tonumber(t.ap)].data
+	local x = spec_Slur[y].id
+	t[x] = t[x] + d*spec_Slur[y].step
 	t[x] = t[x]
 end
 
