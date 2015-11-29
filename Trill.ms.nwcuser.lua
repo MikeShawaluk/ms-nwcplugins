@@ -1,4 +1,4 @@
--- Version 1.0
+-- Version 1.1
 
 --[[----------------------------------------------------------------
 This plugin draws a trill above or below a set of notes, and optionally plays the trill.
@@ -14,6 +14,8 @@ The displayed style of the accidental symbol, when present. The choices are 1 (p
 This specifies the accidental to be applied to the auxiliary note. Possible values are None, Sharp, Natural, Flat, Double Flat or Double Sharp. The default setting is None.
 @LineType
 This specifies the style of the extender line to be drawn. The choices are Wavy and Jagged, and the default setting is Wavy.
+@PlayNote
+This specifies the note duration to be used for playback. The choices are Sixteenth, Thirtysecond and Sixtyfourth, and the default setting is Thirtysecond.
 @WhichFirst
 This determines whether the principal note or the auxiliary note should be played first in the trill. The default setting is Principal.
 @AuxNoteInt
@@ -46,11 +48,17 @@ local accCharList = { None='', Sharp='d', Natural='e', Flat='f', ['Double Flat']
 local accNwctxtList = { None='', Sharp='#', Natural='n', Flat='b', ['Double Flat']='v', ['Double Sharp']='x'}
 local playWhichFirstList = { 'Principal', 'Auxiliary' }
 local auxNotePitchList = { 5, 4, 3, 2, 1, 'Auto', -1, -2, -3, -4, -5 }
+local accStyleList = {
+	{ 0.8, 0.7 },
+	{ 1.5, 0.6 },
+	{ 4, 0.6 },
+	{ 0.8, 0.7 },
+}
 
 local spec_Trill = {
 	{ id='Span', label='Note Span', type='int', default=0, min=0 },
     { id='Scale', label='Scale (%)', type='int', min=5, max=400, step=5, default=100 },
-	{ id='AccStyle', label='Accidental Style', type='int', default=1, min=1, max=4},
+	{ id='AccStyle', label='Accidental Style', type='int', default=1, min=1, max=#accStyleList},
 	{ id='Accidental', label='Accidental', type='enum', default=accList[1], list=accList },
 	{ id='LineType', label='Line Type', type='enum', default=lineTypeList[1], list=lineTypeList },
 	{ id='PlayNote', label='Playback Note Type', type='enum', default=playNoteList[2], list=playNoteList },
@@ -64,6 +72,8 @@ local spec_Trill = {
 local function draw_Trill(t)
 	local span = t.Span
 	local scale = t.Scale / 100
+	local accStyle = t.AccStyle
+	local accStyleVars = accStyleList[accStyle]
 
 	startNote:find('next', 'note')
 	if not startNote then return end
@@ -90,13 +100,11 @@ local function draw_Trill(t)
 	len = len - trLen
 	local accLen = 0
 	if acc ~= '' then
-		local yo, sf = 0.8, 0.7
-		if t.AccStyle == 2 then yo, sf = 1.5, 0.6 end
-		if t.AccStyle == 3 then yo, sf = 4, 0.6 end
-		if t.AccStyle == 4 then acc = '(_' .. acc .. '_)' end
+		local yo, sf = accStyleVars[1], accStyleVars[2]
+		if accStyle == 4 then acc = '(_' .. acc .. '_)' end
 		nwcdraw.setFontSize(nwcdraw.getFontSize()*sf)
-		local ax = t.AccStyle == 3 and x1+(trLen-spLen-nwcdraw.calcTextSize(acc))*0.5 or x1+trLen
-		accLen = t.AccStyle == 3 and 0 or nwcdraw.calcTextSize(acc)
+		local ax = accStyle == 3 and x1+(trLen-spLen-nwcdraw.calcTextSize(acc))*0.5 or x1+trLen
+		accLen = accStyle == 3 and 0 or nwcdraw.calcTextSize(acc)
 		nwcdraw.moveTo(ax, scale*(yo-sf))
 		nwcdraw.text(acc)
 		len = len - accLen
