@@ -1,9 +1,8 @@
--- Version 0.11
+-- Version 1.0
 
 --[[----------------------------------------------------------------
-This plugin draws a solid, dashed or dotted slur with adjustable end point positions and curve shape. 
-It can be used for special situations where a normal slur does not work well, such as a slur-within-a-slur, or for 
-"conditional" slurs for different verses on a vocal staff. This object is ornamental only, and does not affect playback.
+This plugin draws a solid, dashed or dotted cubic Bezier slur with adjustable end point positions and curve shape. 
+It offers improved shape shape control over Slur.ms. This object is ornamental only, and does not affect playback.
 
 To add a slur, insert the user object immediately before the note/chord where you want the slur to start. 
 The slur object will detect the starting and ending chords' position, duration, stem direction and slur direction 
@@ -13,7 +12,7 @@ situations. These settings can be overridden by use of various parameters.
 The number of notes/chords to include in the slur. The minimum value is 2, which is the default setting.
 @Pen
 The type of line to draw for the slur: solid, dash or dot. The solid line type will create a shaped Bezier 
-curve that is thinner at the end points, similar in appearance to regular Noteworthy slurs. The dot and dash 
+curve that is thinner at the end points, similar in appearance to regular slurs. The dot and dash 
 line types are drawn with a uniform line thickness. The default value is solid.
 @Dir
 The direction of the slur: Default, Upward or Downward. When set to Default, the slur will take its direction 
@@ -22,7 +21,7 @@ and ending notes. When set to Upward or Downward, the slur direction is set expl
 
 Note that upward slurs are positioned at the top notes of the starting and ending chords, while downward 
 slurs are positioned at the bottom notes. For starting or ending rests, the default endpoints will be the same
-as for normal slurs.
+as for regular slurs.
 @StartOffsetX
 This will adjust the auto-determined horizontal (X) position of the slur's start point. The range of values 
 is -100.00 to 100.00. The default setting is 0.
@@ -35,13 +34,19 @@ is -100.00 to 100.00. The default setting is 0.
 @EndOffsetY
 This will adjust the auto-determined vertical (Y) position of the slur's end point. The range of values 
 is -100.00 to 100.00. The default setting is 0.
-@Strength
-This will adjust the strength (shape) of the curve. The range of values is 0.00 to 10.00, where a value 
+@LeftStrength
+This will adjust the strength (shape) of the left side of the curve. The range of values is 0.00 to 100.00, where a value 
 of 1 is the auto-determined curve strength. Lower values will result in a shallower curve, and stronger 
 values a steeper curve. A value of 0 results in a straight line. The default setting is 1.
-@Pitch
-This adjusts the pitch (sharpness) of the ends of the curve. The range of values is 0.00 to 0.50, and
-the default setting is 0.25.
+@RightStrength
+This will adjust the strength (shape) of the right side of the curve. See the description for Left Strength
+for more information.
+@LeftBalance
+This will adjust the balance of the left side of the curve. The range of values is 0 to 1.0, where a value 
+of 0.5 is the default setting.
+@RightBalance
+This will adjust the balance of the right side of the curve. The range of values is 0 to 1.0, where a value 
+of 0.5 is the default setting.
 --]]----------------------------------------------------------------
 
 local user = nwcdraw.user
@@ -49,44 +54,89 @@ local startNote = nwc.drawpos.new()
 local endNote = nwc.drawpos.new()
 local dirList = { 'Default', 'Upward', 'Downward' }
 local dirNum = { Default=0, Upward=1, Downward=-1 }
-local paramNameList = { '&Span', 'Start Offset &X', 'Start Offset &Y', 'End Offset &X', 'End Offset &Y', 'S&trength', '&Pitch' }
-local paramIdList = { 'Span', 'StartOffsetX', 'StartOffsetY', 'EndOffsetX', 'EndOffsetY', 'Strength', 'Pitch' }
-local paramIncList = { 1, .1, .1, .1, .1, .1, .01 }
-local showAnchors = false
-local adjustParam = 1
 
-local menu_Slur = {
-	{ type='choice', name='&Adjust Parameter', default=nil, list=paramNameList, disable=false },
+local spec_Slur = {
+	{ id='Span', label='&Note Span', type='int', default=2, min=2, step=1 },
+	{ id='Pen', label='&Line Type', type='enum', default='solid', list=nwc.txt.DrawPenStyle },
+	{ id='Dir', label='&Direction', type='enum', default='Default', list=dirList },
+	{ id='StartOffsetX', label='Start Offset &X', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='StartOffsetY', label='Start Offset &Y', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='EndOffsetX', label='End Offset &X', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='EndOffsetY', label='End Offset &Y', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='LeftStrength', label='Left &Strength', type='float', default=1, min=0, max=100, step=0.1 },
+	{ id='LeftBalance', label='Left &Balance', type='float', default=0.5, min=0, max=1, step=0.05 },
+	{ id='RightStrength', label='Right &Strength', type='float', default=1, min=0, max=100, step=0.1 },
+	{ id='RightBalance', label='Right &Balance', type='float', default=0.5, min=0, max=1, step=0.05 },
 }
 
+local menu_Slur = {
+	{ type='command', name='Choose Spin Target:', disable=true },
+	{ type='command', name='&Vertical Position', disable=false, separator=true, data={ 5, 7 } }
+}
+
+for k, s in ipairs(spec_Slur) do
+	local a = {	name=s.label, disable=false, data=k }
+	if s.type ~= 'enum' then
+		a.type = 'command'
+		menu_Slur[#menu_Slur+1] = a
+	end
+end
+for k, s in ipairs(spec_Slur) do
+	local a = {	name=s.label, disable=false, data=k }
+	if s.type == 'enum' then
+		a.separator = k == 2
+		a.type = 'choice'
+		a.list = s.list
+		menu_Slur[#menu_Slur+1] = a
+	end
+end
+
+
 local function menuInit_Slur(t)
-	menu_Slur[1].default = paramNameList[adjustParam]
+	local ap = tonumber(t.ap)
+	for k, m in ipairs(menu_Slur) do
+		if m.data then
+			local s = spec_Slur[m.data]
+			if s then
+				local v = t[s.id]
+				if m.type == 'command' then
+					m.checkmark = (k == ap)
+					m.name = string.format('%s (%s)', s.label, v)
+				else
+					m.default = v
+				end
+			else
+				m.checkmark = (k == ap)
+			end
+		end
+	end
 end
 
 local function menuClick_Slur(t, menu, choice)
-	adjustParam = choice
-	showAnchors = true
+	if choice then
+		local m = menu_Slur[menu]
+		local s = spec_Slur[m.data]
+		t[s.id] = m.list[choice]
+	else
+		t.ap = menu
+	end
 end
 
-local function audit_Slur(t)
-	showAnchors = false
+local function value(t, x1, x2, x3, x4)
+	return (1-t)^3 * x1 + 3*(1-t)^2*t * x2 + 3*(1-t)*t^2 * x3 + t^3 * x4
 end
 
-local spec_Slur = {
-	{ id='Span', label='Note Span', type='int', default=2, min=2 },
-	{ id='Pen', label='Line Type', type='enum', default='solid', list=nwc.txt.DrawPenStyle },
-	{ id='Dir', label='Direction', type='enum', default='Default', list=dirList },
-	{ id='StartOffsetX', label='Start Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='StartOffsetY', label='Start Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='EndOffsetX', label='End Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='EndOffsetY', label='End Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='Strength', label='Strength', type='float', default=1, min=0, max=10, step=0.1 },
-	{ id='Pitch', label='Pitch', type='float', default=0.25, min=0, max=0.5, step=0.01 },
-}
+local function point(t, x1, y1, x2, y2, x3, y3, x4, y4)
+	return value(t, x1, x2, x3, x4), value(t, y1, y2, y3, y4)
+end
 
-local function box(x, y)
+local function box(x, y, p1, p2, ap)
+	local m = (ap == p1 or ap == p2) and 'strokeandfill' or 'stroke'
+	nwcdraw.setPen('solid', 100)
 	nwcdraw.moveTo(x, y)
+	nwcdraw.beginPath()
 	nwcdraw.roundRect(0.2)
+	nwcdraw.endPath(m)
 end
 
 local function noteStuff(item, slurDir)
@@ -115,23 +165,22 @@ local function noteStuff(item, slurDir)
 end
 
 local function draw_Slur(t)
-	local xyar = nwcdraw.getAspectRatio()
 	local _, my = nwcdraw.getMicrons()
 	local solidPenWidth, dotDashPenWidth = my*0.12, my*.375
 	local span = t.Span
 	local pen = t.Pen
 	local dir = dirNum[t.Dir]
-	local strength = t.Strength
+	local leftStrength, rightStrength = t.LeftStrength*.65, t.RightStrength*.65
+	local leftBalance, rightBalance = t.LeftBalance*.5, t.RightBalance*.5 + .5
 	local startOffsetX, startOffsetY = t.StartOffsetX, t.StartOffsetY
 	local endOffsetX, endOffsetY = t.EndOffsetX, t.EndOffsetY
 	startNote:find('next', 'noteOrRest')
 	for i = 1, span do
-		if not endNote:find('next', 'noteOrRest') then return end
+		if not endNote:find('next', 'noteOrRest') then break end
 	end
 	local startStem, slurDir, ya, xo1, startNotehead = noteStuff(startNote, dir)
 	local endStem, _, _, xo2, endNotehead = noteStuff(endNote, slurDir)
 
-	ya = ya * strength * .65
 	if dir ~= 0 then slurDir = dir end
 	local x1, y1, x2, y2
 	local startObjType, endObjType = startNote:objType(), endNote:objType()
@@ -165,40 +214,51 @@ local function draw_Slur(t)
 		x2 = x2 + endOffsetX - xo2
 		y2 = (slurDir == 1) and endNoteYTop + endOffsetY + 1.75 or endNoteYBottom - endOffsetY - 1.75
 	end
-	local xa = x1 + (x2-x1) * t.Pitch
-	local xb = x1 + (x2-x1) * (1-t.Pitch)
-	local m = (y2-y1)/(x2-x1)
-	local ya0 = y1 + (y2-y1) * t.Pitch
-	local yb0 = y1 + (y2-y1) * (1-t.Pitch)
-	local ya1 = ya0 + slurDir * ya
-	local yb1 = yb0 + slurDir * ya
+	local xa1 = x1 + (x2-x1) * leftBalance
+	local ya1 = y1 + (y2-y1) * leftBalance + slurDir * ya * leftStrength
+	local xa2 = x1 + (x2-x1) * rightBalance
+	local ya2 = y1 + (y2-y1) * rightBalance + slurDir * ya * rightStrength
 	nwcdraw.moveTo(x1, y1)
 	if t.Pen == 'solid' then
-		local bw = startNote:isGrace() and .1 or .2
+		local bw = startNote:isGrace() and .13 or .2
 		nwcdraw.setPen(t.Pen, solidPenWidth)
 		nwcdraw.beginPath()
-		nwcdraw.bezier(xa, ya1+bw, xb, yb1+bw, x2, y2)
-		nwcdraw.bezier(xb, yb1-bw, xa, ya1-bw, x1, y1)
+		nwcdraw.bezier(xa1, ya1+bw, xa2, ya2+bw, x2, y2)
+		nwcdraw.bezier(xa2, ya2-bw, xa1, ya1-bw, x1, y1)
 		nwcdraw.endPath()
-		if showAnchors then
-			box(x1, y1)
-			box(xa, ya1)
-			box(xa, ya0)
-			box(xb, yb1)
-			box(xb, yb0)
-			box(x2, y2)
-		--nwcdraw.line(x1,y1,x2,y2)
-		end
 	else
 		nwcdraw.setPen(t.Pen, dotDashPenWidth)
-		nwcdraw.bezier(xa, ya1, xb, yb1, x2, y2)
+		nwcdraw.bezier(xa1, ya1, xa2, ya2, x2, y2)
+	end
+	if t.ap then
+		local ap = tonumber(t.ap)
+		local xb1, yb1 = point(0.05+(0.85*leftBalance), x1, y1, xa1, ya1, xa2, ya2, x2, y2)
+		local xb2, yb2 = point(0.1+(0.85*rightBalance), x1, y1, xa1, ya1, xa2, ya2, x2, y2)
+		box(x1, y1, 4, 5, ap)
+		box(xb1, yb1, 8, 9, ap)
+		box(xb2, yb2, 10, 11, ap)
+		box(x2, y2, 6, 7, ap)
 	end
 end
 
 local function spin_Slur(t, d)
-	local x = paramIdList[adjustParam] or 1
-	t[x] = t[x] + d*paramIncList[adjustParam]
-	t[x] = t[x]
+	t.ap = t.ap or 2
+	local y = menu_Slur[tonumber(t.ap)].data
+	if type(y) == 'table' then
+		for _, y1 in ipairs(y) do
+			local x = spec_Slur[y1].id
+			t[x] = t[x] + d*spec_Slur[y1].step
+			t[x] = t[x]
+		end
+	else
+		local x = spec_Slur[y].id
+		t[x] = t[x] + d*spec_Slur[y].step
+		t[x] = t[x]
+	end
+end
+
+local function audit_Slur(t)
+	t.ap = nil
 end
 
 return {
