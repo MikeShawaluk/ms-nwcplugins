@@ -105,6 +105,8 @@ local function menuInit_Slur(t)
 				else
 					m.default = v
 				end
+			else
+				m.checkmark = (k == ap)
 			end
 		end
 	end
@@ -232,10 +234,10 @@ local function draw_Slur(t)
 		local ap = tonumber(t.ap)
 		local xb1, yb1 = point(0.05+(0.85*leftBalance), x1, y1, xa1, ya1, xa2, ya2, x2, y2)
 		local xb2, yb2 = point(0.1+(0.85*rightBalance), x1, y1, xa1, ya1, xa2, ya2, x2, y2)
-		box(x1, y1, 3, 4, ap)
-		box(xb1, yb1, 7, 8, ap)
-		box(xb2, yb2, 9, 10, ap)
-		box(x2, y2, 5, 6, ap)
+		box(x1, y1, 4, 5, ap)
+		box(xb1, yb1, 8, 9, ap)
+		box(xb2, yb2, 10, 11, ap)
+		box(x2, y2, 6, 7, ap)
 	end
 end
 
