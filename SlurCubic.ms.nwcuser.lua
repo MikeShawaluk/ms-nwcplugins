@@ -70,13 +70,13 @@ local spec_Slur = {
 }
 
 local menu_Slur = {
-	{ type='command', name='Choose Spin Target:', disable=true }
+	{ type='command', name='Choose Spin Target:', disable=true },
+	{ type='command', name='&Vertical Position', disable=false, separator=true, data={ 5, 7 } }
 }
 
 for k, s in ipairs(spec_Slur) do
 	local a = {	name=s.label, disable=false, data=k }
 	if s.type ~= 'enum' then
-		a.separator = k == 1
 		a.type = 'command'
 		menu_Slur[#menu_Slur+1] = a
 	end
@@ -97,12 +97,14 @@ local function menuInit_Slur(t)
 	for k, m in ipairs(menu_Slur) do
 		if m.data then
 			local s = spec_Slur[m.data]
-			local v = t[s.id]
-			if m.type == 'command' then
-				m.checkmark = (k == ap)
-				m.name = string.format('%s (%s)', s.label, v)
-			else
-				m.default = v
+			if s then
+				local v = t[s.id]
+				if m.type == 'command' then
+					m.checkmark = (k == ap)
+					m.name = string.format('%s (%s)', s.label, v)
+				else
+					m.default = v
+				end
 			end
 		end
 	end
@@ -228,8 +230,8 @@ local function draw_Slur(t)
 	end
 	if t.ap then
 		local ap = tonumber(t.ap)
-		local xb1, yb1 = point(0.1+(0.8*leftBalance), x1, y1, xa1, ya1, xa2, ya2, x2, y2)
-		local xb2, yb2 = point(0.1+(0.8*rightBalance), x1, y1, xa1, ya1, xa2, ya2, x2, y2)
+		local xb1, yb1 = point(0.05+(0.85*leftBalance), x1, y1, xa1, ya1, xa2, ya2, x2, y2)
+		local xb2, yb2 = point(0.1+(0.85*rightBalance), x1, y1, xa1, ya1, xa2, ya2, x2, y2)
 		box(x1, y1, 3, 4, ap)
 		box(xb1, yb1, 7, 8, ap)
 		box(xb2, yb2, 9, 10, ap)
@@ -240,9 +242,17 @@ end
 local function spin_Slur(t, d)
 	t.ap = t.ap or 2
 	local y = menu_Slur[tonumber(t.ap)].data
-	local x = spec_Slur[y].id
-	t[x] = t[x] + d*spec_Slur[y].step
-	t[x] = t[x]
+	if type(y) == 'table' then
+		for _, y1 in ipairs(y) do
+			local x = spec_Slur[y1].id
+			t[x] = t[x] + d*spec_Slur[y1].step
+			t[x] = t[x]
+		end
+	else
+		local x = spec_Slur[y].id
+		t[x] = t[x] + d*spec_Slur[y].step
+		t[x] = t[x]
+	end
 end
 
 local function audit_Slur(t)
