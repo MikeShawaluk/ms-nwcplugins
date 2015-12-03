@@ -1,4 +1,4 @@
--- Version 1.0
+-- Version 1.1
 
 --[[----------------------------------------------------------------
 This plugin draws a solid, dashed or dotted cubic Bezier slur with adjustable end point positions and curve shape. 
@@ -52,8 +52,19 @@ of 0.5 is the default setting.
 local user = nwcdraw.user
 local startNote = nwc.drawpos.new()
 local endNote = nwc.drawpos.new()
-local dirList = { 'Default', 'Upward', 'Downward' }
-local dirNum = { Default=0, Upward=1, Downward=-1 }
+local dirTable = {
+	{ 'Default', 0 }, 
+	{ 'Upward', 1 },
+	{ 'Downward', -1 }
+}
+local showBoxes = { edit=true }
+local dirList = {}
+local dirNum = {}
+
+for _, v in ipairs(dirTable) do
+	dirList[#dirList+1] = v[1]
+	dirNum[v[1]] = v[2]
+end
 
 local spec_Slur = {
 	{ id='Span', label='&Note Span', type='int', default=2, min=2, step=1 },
@@ -61,12 +72,12 @@ local spec_Slur = {
 	{ id='Dir', label='&Direction', type='enum', default='Default', list=dirList },
 	{ id='StartOffsetX', label='Start Offset &X', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='StartOffsetY', label='Start Offset &Y', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='EndOffsetX', label='End Offset &X', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='EndOffsetY', label='End Offset &Y', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='EndOffsetX', label='End &Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='EndOffsetY', label='End O&ffset Y', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='LeftStrength', label='Left &Strength', type='float', default=1, min=0, max=100, step=0.1 },
 	{ id='LeftBalance', label='Left &Balance', type='float', default=0.5, min=0, max=1, step=0.05 },
-	{ id='RightStrength', label='Right &Strength', type='float', default=1, min=0, max=100, step=0.1 },
-	{ id='RightBalance', label='Right &Balance', type='float', default=0.5, min=0, max=1, step=0.05 },
+	{ id='RightStrength', label='Right S&trength', type='float', default=1, min=0, max=100, step=0.1 },
+	{ id='RightBalance', label='Right B&alance', type='float', default=0.5, min=0, max=1, step=0.05 },
 }
 
 local menu_Slur = {
@@ -101,7 +112,7 @@ local function menuInit_Slur(t)
 				local v = t[s.id]
 				if m.type == 'command' then
 					m.checkmark = (k == ap)
-					m.name = string.format('%s (%s)', s.label, v)
+					m.name = string.format('%s\t(%s)', s.label, v)
 				else
 					m.default = v
 				end
@@ -230,7 +241,7 @@ local function draw_Slur(t)
 		nwcdraw.setPen(t.Pen, dotDashPenWidth)
 		nwcdraw.bezier(xa1, ya1, xa2, ya2, x2, y2)
 	end
-	if t.ap then
+	if t.ap and showBoxes[nwcdraw.getTarget()] then
 		local ap = tonumber(t.ap)
 		local xb1, yb1 = point(0.05+(0.85*leftBalance), x1, y1, xa1, ya1, xa2, ya2, x2, y2)
 		local xb2, yb2 = point(0.1+(0.85*rightBalance), x1, y1, xa1, ya1, xa2, ya2, x2, y2)
@@ -242,7 +253,7 @@ local function draw_Slur(t)
 end
 
 local function spin_Slur(t, d)
-	t.ap = t.ap or 2
+	t.ap = t.ap or 3 -- default to Span
 	local y = menu_Slur[tonumber(t.ap)].data
 	if type(y) == 'table' then
 		for _, y1 in ipairs(y) do
