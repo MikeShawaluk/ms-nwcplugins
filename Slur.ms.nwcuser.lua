@@ -1,4 +1,4 @@
--- Version 1.4
+-- Version 1.6
 
 --[[----------------------------------------------------------------
 This plugin draws a solid, dashed or dotted slur with adjustable end point positions and curve shape. 
@@ -47,8 +47,19 @@ of 0 is the default (center) balance setting.
 local user = nwcdraw.user
 local startNote = nwc.drawpos.new()
 local endNote = nwc.drawpos.new()
-local dirList = { 'Default', 'Upward', 'Downward' }
-local dirNum = { Default=0, Upward=1, Downward=-1 }
+local dirTable = {
+	{ 'Default', 0 }, 
+	{ 'Upward', 1 },
+	{ 'Downward', -1 }
+}
+local showBoxes = { edit=true }
+local dirList = {}
+local dirNum = {}
+
+for _, v in ipairs(dirTable) do
+	dirList[#dirList+1] = v[1]
+	dirNum[v[1]] = v[2]
+end
 
 local spec_Slur = {
 	{ id='Span', label='&Note Span', type='int', default=2, min=2, step=1 },
@@ -56,39 +67,63 @@ local spec_Slur = {
 	{ id='Dir', label='&Direction', type='enum', default='Default', list=dirList },
 	{ id='StartOffsetX', label='Start Offset &X', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='StartOffsetY', label='Start Offset &Y', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='EndOffsetX', label='End Offset &X', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='EndOffsetY', label='End Offset &Y', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='Strength', label='&Strength', type='float', default=1, min=0, max=100, step=0.25 },
+	{ id='EndOffsetX', label='End &Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='EndOffsetY', label='End O&ffset Y', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='Strength', label='&Strength', type='float', default=1, min=0, max=100, step=0.1 },
 	{ id='Balance', label='&Balance', type='float', default=0, min=-.5, max=.5, step=0.05 },
 }
 
 local menu_Slur = {
-	{ type='command', name='Choose Spin Target:', disable=true }
+	{ type='command', name='Choose Spin Target:', disable=true },
+	{ type='command', name='&Vertical Position', disable=false, separator=true, data={ 5, 7 } }
 }
 
 for k, s in ipairs(spec_Slur) do
 	local a = {	name=s.label, disable=false, data=k }
 	if s.type ~= 'enum' then
-		a.separator = k == 1
 		a.type = 'command'
 		menu_Slur[#menu_Slur+1] = a
 	end
 end
+for k, s in ipairs(spec_Slur) do
+	local a = {	name=s.label, disable=false, data=k }
+	if s.type == 'enum' then
+		a.separator = k == 2
+		a.type = 'choice'
+		a.list = s.list
+		menu_Slur[#menu_Slur+1] = a
+	end
+end
+
 
 local function menuInit_Slur(t)
 	local ap = tonumber(t.ap)
 	for k, m in ipairs(menu_Slur) do
 		if m.data then
 			local s = spec_Slur[m.data]
+			if s then
 			local v = t[s.id]
-			m.checkmark = (k == ap)
-			m.name = string.format('%s (%s)', s.label, v)
+			if m.type == 'command' then
+				m.checkmark = (k == ap)
+					m.name = string.format('%s\t(%s)', s.label, v)
+			else
+				m.default = v
+				end
+			else
+				m.checkmark = (k == ap)
+			end
 		end
 	end
 end
 
 local function menuClick_Slur(t, menu, choice)
-	t.ap = menu
+	if choice then
+		local m = menu_Slur[menu]
+		local s = spec_Slur[m.data]
+		t[s.id] = m.list[choice]
+	else
+		t.ap = menu
+	end
 end
 
 local function value(t, x1, x2, x3)
@@ -197,21 +232,29 @@ local function draw_Slur(t)
 		nwcdraw.setPen(t.Pen, dotDashPenWidth)
 		nwcdraw.bezier(xa, ya, x2, y2)
 	end
-	if t.ap then
+	if t.ap and showBoxes[nwcdraw.getTarget()] then
 		local ap = tonumber(t.ap)
 		local xb, yb = point(0.1+(0.8*balance), x1, y1, xa, ya, x2, y2)
-		box(x1, y1, 3, 4, ap)
-		box(xb, yb, 7, 8, ap)
-		box(x2, y2, 5, 6, ap)
+		box(x1, y1, 4, 5, ap)
+		box(xb, yb, 8, 9, ap)
+		box(x2, y2, 6, 7, ap)
 	end
 end
 
 local function spin_Slur(t, d)
-	t.ap = t.ap or 2
+	t.ap = t.ap or 3 -- default to Span
 	local y = menu_Slur[tonumber(t.ap)].data
+	if type(y) == 'table' then
+		for _, y1 in ipairs(y) do
+			local x = spec_Slur[y1].id
+			t[x] = t[x] + d*spec_Slur[y1].step
+			t[x] = t[x]
+		end
+	else
 	local x = spec_Slur[y].id
 	t[x] = t[x] + d*spec_Slur[y].step
 	t[x] = t[x]
+	end
 end
 
 local function audit_Slur(t)

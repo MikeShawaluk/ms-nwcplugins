@@ -1,4 +1,4 @@
--- Version 1.0
+-- Version 1.1
 
 --[[----------------------------------------------------------------
 This plugin draws 8va/15ma (bassa) markings in a score by looking for Instrument Change commands with a Transpose settings corresponding to one or two octaves upward/downward. The markings include a starting label and 
@@ -54,11 +54,11 @@ local spec_Ottavamatic = {
 
 for k, s in ipairs(spec_Ottavamatic) do
 	local a = {	name=s.label, disable=false, data=k }
-	if s.type == 'bool' then
-		a.type = 'command'
-	else
+	if s.type == 'enum' then
 		a.type = 'choice'
-		a.list = s.type == 'enum' and s.list or { '', 'Change...' }
+		a.list = s.list
+	else
+		a.type = 'command'
 	end
 	menu_Ottavamatic[#menu_Ottavamatic+1] = a
 end
@@ -67,13 +67,12 @@ local function menuInit_Ottavamatic(t)
 	for _, m in ipairs(menu_Ottavamatic) do
 		local s = spec_Ottavamatic[m.data]
 		local v = t[s.id]
-		if m.type == 'command' then
+		if s.type == 'bool' then
 			m.checkmark = v
-		else
-			if s.type ~= 'enum' then
-				m.list[1] = v
-			end
+		elseif s.type == 'enum' then
 			m.default = v
+		else
+			m.name = string.format('%s\t%s', s.label, v)
 		end
 	end
 end
@@ -82,15 +81,13 @@ local function menuClick_Ottavamatic(t, menu, choice)
 	local m = menu_Ottavamatic[menu]
 	local s = spec_Ottavamatic[m.data]
 	local v = t[s.id]
-	if m.type == 'command' then
+	if s.type == 'bool' then
 		t[s.id] = not v
+	elseif s.type == 'enum' then
+		t[s.id] = m.list[choice]
 	else
-		if s.type == 'enum' then
-			t[s.id] = m.list[choice]
-		elseif choice ~= 1 then
-			local dt = s.type == 'text' and '*' or string.format('%s[%s,%s]', dtt[s.type], s.min, s.max)
-			t[s.id] = nwcui.prompt(string.format('Enter %s:', string.gsub(s.label, '&', '')), dt, v)
-		end
+		local dt = s.type == 'text' and '*' or string.format('%s[%s,%s]', dtt[s.type], s.min, s.max)
+		t[s.id] = nwcui.prompt(string.format('Enter %s:', string.gsub(s.label, '&', '')), dt, v)
 	end
 end
 
