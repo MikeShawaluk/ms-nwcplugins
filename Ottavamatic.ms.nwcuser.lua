@@ -1,12 +1,20 @@
--- Version 1.1
+-- Version 1.2
 
 --[[----------------------------------------------------------------
-This plugin draws 8va/15ma (bassa) markings in a score by looking for Instrument Change commands with a Transpose settings corresponding to one or two octaves upward/downward. The markings include a starting label and 
-dashed line that spans systems when required. A number of settings are available to customize the style and appearance of the markings.
+This plugin draws 8va/15ma/22ma (bassa) markings in a score by looking for 
+Instrument Change commands with a Transpose settings corresponding to one, 
+two or three octaves upward/downward. The markings include a starting label
+and dashed line that spans systems when required. Settings are available 
+to customize the style and appearance of the markings.
 
-To use the object, insert a copy at the start of each staff which will use the markings. Then insert Instrument Change commands at the start and end of each section that you wish to mark, with the starting instrument 
-change having an effective transpose of 12, -12, 24 or -24, and the ending instrument change having an effective transpose of 0.  If you want to discontinue 8va markings in your score, insert another copy of the object 
-and set its visibility to Never. To re-enable the markings, add another visible one later in the score.
+To use the object, insert a copy at the start of each staff which will use 
+the markings. Then insert Instrument Change commands at the start and end 
+of each section that you wish to mark, with the starting instrument change
+having an effective transpose of 12, -12, 24, -24, 36 or -36 and the 
+ending instrument change having an effective transpose of 0.  If you want to 
+discontinue 8va markings in your score, insert another copy of the object 
+and set its visibility to Never. To re-enable the markings, add another 
+visible one later in the score.
 @UpOneText
 Label text to use for transposing up one octave. The default setting is "8va".
 @DownOneText
@@ -15,22 +23,39 @@ Label text to use for transposing down one octave. The default setting is "8va b
 Label text to use for transposing up two octaves. The default setting is "15ma".
 @DownTwoText
 Label text to use for transposing down two octaves. The default setting is "15ma bassa".
+@UpThreeText
+Label text to use for transposing up three octaves. The default setting is "22ma".
+@DownThreeTextText
+Label text to use for transposing down three octaves. The default setting is "22ma bassa".
 @Courtesy
-Determines whether "( )" should be added around the label when a region extends from the previous system. The default setting is enabled (checked).
+Determines whether "( )" should be added around the label when a section 
+extends from the previous system. The default setting is enabled (checked).
 @IncludeRests
-This will allow an 8va region to include beginning or trailing rests. Normally, the markings will be automatically positioned at the first and last notes between the instrument changes (which is standard engraving practice). 
-When this setting is enabled, leading or trailing rests in this section will also be included. The default setting is disabled (unchecked).
+This will allow an 8va section to include beginning or trailing rests. Normally, 
+the markings will be automatically positioned at the first and last notes 
+between the instrument changes (which is standard engraving practice). 
+When this setting is enabled, leading and trailing rests in this section 
+will also be included. The default setting is disabled (unchecked).
+@SuppressLine
+Determines whether the dashed line should be suppressed for sections which are shorter
+than the label text (e.g. single notes). The default setting is disabled (unchecked), 
+which draws lines for all sections.
 @StaffTranspose
-Staff transposition value, to allow for non-C instrument parts. This should be set to the transpose value for the staff's default instrument. The default setting is 0.
+Staff transposition value, to allow for non-C instrument parts. This should be set to the 
+transpose value for the staff's default instrument. The default setting is 0.
 
-When using 8va markings on transposed staves, this value should be taken into account for the Instrument Change commands that start and end each marked section. For example, a Bb clarinet staff would generally have a 
-staff instrument transpose of -2. Therefore, an 8va region for this instrument would have starting and ending transpose values of 10 and -2.
+When using 8va markings on transposed staves, this value should be taken into 
+account for the Instrument Change commands that start and end each marked 
+section. For example, a Bb clarinet staff would generally have a staff instrument 
+transpose of -2. Therefore, an 8va section for this instrument would have starting 
+and ending transpose values of 10 and -2.
 --]]----------------------------------------------------------------
 
 local userObjTypeName = ...
 local userObjSigName = nwc.toolbox.genSigName(userObjTypeName)
 local user = nwcdraw.user
-local transposeLookup = { [12] = 1, [-12] = -1, [24] = 2, [-24] = -2 }
+local transposeLookup = { [12] = 1, [-12] = -1, [24] = 2, [-24] = -2, [36] = 3, [-36] = -3 }
+local labelTextLookup = { [-3] = 'DownThreeText', [-2] = 'DownTwoText', [-1] = 'DownOneText', [1] = 'UpOneText', [2] = 'UpTwoText', [3] = 'UpThreeText' }
 local priorUser8va = nwc.ntnidx.new()
 local nextUser8va = nwc.ntnidx.new()
 local priorPatch = nwc.ntnidx.new()
@@ -47,8 +72,11 @@ local spec_Ottavamatic = {
 	{ id='DownOneText', label='-1 &Octave Text', type='text', default='8va bassa' },
 	{ id='UpTwoText', label='+2 &Octave Text', type='text', default='15ma' },
 	{ id='DownTwoText', label='-2 &Octave Text', type='text', default='15ma bassa' },
+	{ id='UpThreeText', label='+3 &Octave Text', type='text', default='22ma' },
+	{ id='DownThreeText', label='-3 &Octave Text', type='text', default='22ma bassa' },
 	{ id='Courtesy', label='Add Courtesy Marks', type='bool', default=true },
 	{ id='IncludeRests', label='Include Rests', type='bool', default=false },
+	{ id='SuppressLine', label='Suppress Line for Short Sections', type='bool', default='false' },
 	{ id='StaffTranspose', label='Staff Transpose', type='int', default=0, min=-120, max=120 }
 }
 
@@ -92,7 +120,7 @@ local function menuClick_Ottavamatic(t, menu, choice)
 end
 
 local function find8vaEdge(idx, dir, t)
-	if not idx:find(dir,'objType', 'Instrument') then return false end
+	if not idx:find(dir, 'objType', 'Instrument') then return false end
 	local trans = (tonumber(idx:objProp('Trans')) or 0) - t.StaffTranspose
 	return transposeLookup[trans] or 0
 end
@@ -100,9 +128,8 @@ end
 local function drawShift(drawpos1, drawpos2, extendingSection, endOfSection, shiftDir, y, t)
 	local x1 = drawpos1:xyAnchor()
 	local x2 = endOfSection and drawpos2:xyRight()+.5 or drawpos2:xyAnchor()
-	local lt = { [-2]=t.DownTwoText, [-1]=t.DownOneText, [1]=t.UpOneText, [2]=t.UpTwoText }
 	local tail = shiftDir > 0 and 2 or -2
-	local label = lt[shiftDir]
+	local label = t[labelTextLookup[shiftDir]] or ''
 	local addParens = extendingSection and t.Courtesy
 	local labelPrefix = addParens and '(' or ''
 	local labelSuffix = addParens and ')' or ''
@@ -126,8 +153,10 @@ local function drawShift(drawpos1, drawpos2, extendingSection, endOfSection, shi
 	else
 		nwcdraw.text(labelFull)
 	end
-	nwcdraw.line(x2, y, x1+w+.25, y)
-	if endOfSection then nwcdraw.line(x2, y, x2, y-tail) end
+	if x2 > x1+w+1 or not t.SuppressLine then
+		nwcdraw.line(x2, y, x1+w+.25, y)
+		if endOfSection then nwcdraw.line(x2, y, x2, y-tail) end
+	end
 end
 
 local function create_Ottavamatic(t)
@@ -137,13 +166,12 @@ end
 local function draw_Ottavamatic(t)
 	local w = nwc.toolbox.drawStaffSigLabel(userObjSigName)
 	if not nwcdraw.isDrawing() then return w end
-
+	if user:isHidden() then return end
+	
 	local _, my = nwcdraw.getMicrons()
 	local penWidth = my*.315
 	local drawpos = nwc.drawpos
-
 	local yOffset = user:staffPos()
-	if user:isHidden() then return end
 	local what = t.IncludeRests and 'noteOrRest' or 'note'
 	nwcdraw.setFontClass('StaffItalic')
 	nwcdraw.setFontSize(5)
