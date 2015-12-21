@@ -1,5 +1,5 @@
 --[[-------------------------------------------------------------------------
-Version 0.3
+Version 0.4
 
 This NWC user tool can be used to mark a section of notes for 8va marks, by
 inserting instrument changes with transposition values. It will prompt the user
@@ -17,9 +17,9 @@ local function insertInstrChange(trans, pos)
 end
 
 local first = true
-local markTrans = { ['15ma']=24, ['8va']=12, ['8va bassa']=-12, ['15ma bassa']=-24 }
+local markTrans = { ['22ma']=36, ['15ma']=24, ['8va']=12, ['8va bassa']=-12, ['15ma bassa']=-24, ['22ma bassa']=-36 }
 local staffTrans = 0
-local markType = nwcut.prompt('Type:', '|15ma|8va|8va bassa|15ma bassa', '8va')
+local markType = nwcut.prompt('Type:', '|22ma|15ma|8va|8va bassa|15ma bassa|22ma bassa', '8va')
 local trans = markTrans[markType]
 local pos = trans > 0 and 10 or -10
 nwcut.setlevel(2)
