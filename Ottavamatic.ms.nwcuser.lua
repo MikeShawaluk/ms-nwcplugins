@@ -76,7 +76,7 @@ local spec_Ottavamatic = {
 	{ id='DownThreeText', label='-3 &Octave Text', type='text', default='22ma bassa' },
 	{ id='Courtesy', label='Add Courtesy Marks', type='bool', default=true },
 	{ id='IncludeRests', label='Include Rests', type='bool', default=false },
-	{ id='SuppressLine', label='Suppress Line for Short Sections', type='bool', default='false' },
+	{ id='SuppressLine', label='Suppress Line for Short Sections', type='bool', default=false },
 	{ id='StaffTranspose', label='Staff Transpose', type='int', default=0, min=-120, max=120 }
 }
 
