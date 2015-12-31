@@ -1,4 +1,4 @@
--- Version 1.1x
+-- Version x1.02
 
 --[[----------------------------------------------------------------
 This plugin draw a guitar chord chart and optionally strums the chord when the song is played. 
@@ -71,7 +71,7 @@ local styleListFull = {
 }
 local styleList = { 'Serif', 'Sans', 'Swing' }
 
-local stringNames = { "E", "A", "D", "G", "B", "High E" }
+local stringNames = { '&E', '&A', '&D', '&G', '&B', '&High E' }
 
 local strings = #stringNames
 
@@ -91,27 +91,41 @@ local _spec = {
 	{ id='Anticipated', label='Anticipated Playback', type='bool', default=true },
 }
 
+local spinnable = { int=true, float=true }
+
 local _menu = {
 	{ type='command', name='Choose Spin Target:', disable=true },
 }
-
+local sep = true
 for k, s in ipairs(stringNames) do
-	_menu[#_menu+1] = {	type='command', name=s, disable=false, separator=(k==1), data=-k }
+	_menu[#_menu+1] = {	type='command', name=s, disable=false, separator=sep, data=-k }
+	sep = false
 end
+local sep = true
 for k, s in ipairs(_spec) do
-	local a = {	name=s.label, disable=false, data=k, separator=(k==1) }
-	if s.type == 'enum' then
-		a.type = 'choice'
-		a.list = s.list
-	else
-		a.type = 'command'
+	if spinnable[s.type] then
+		_menu[#_menu+1] = {	type='command', name=s.label, disable=false, separator=sep, data=k }
+		sep = false
 	end
-	_menu[#_menu+1] = a
+end
+local sep = true
+for k, s in ipairs(_spec) do
+	if not spinnable[s.type] then
+		local a = {	name=s.label, disable=false, separator=sep, data=k }
+		sep = false
+		if s.type == 'enum' then
+			a.type = 'choice'
+			a.list = s.list
+		else
+			a.type = 'command'
+		end
+		_menu[#_menu+1] = a
+	end
 end
 
 local function parseStrings(str)
 	local tbl = {}
-	for s in str:gmatch("%S+") do 
+	for s in str:gmatch('%S+') do 
 		tbl[#tbl+1] = s
 	end
 	while #tbl < 6 do
@@ -138,6 +152,7 @@ local function _menuInit(t)
 					m.default = v
 				else
 					m.name = string.format('%s\t%s', s.label, v)
+					m.checkmark = (k == ap)
 				end
 			end
 		end
@@ -217,6 +232,8 @@ local function _create(t)
 	t.TopFret = commonChords[chord][3]
 end
 
+local lu = { [-1]='x', [0]='o' }
+
 local function _spin(t, d)
 	t.ap = t.ap or 10 -- default to Span
 	local y = _menu[tonumber(t.ap)].data
@@ -232,7 +249,14 @@ local function _spin(t, d)
 			t[x] = t[x] + d*(_spec[y].step or 1)
 			t[x] = t[x]
 		else
-		-- Future code to 'spin' finger dots
+			local f = parseStrings(t.Finger)
+			local s = f[-y]
+			if s then
+				local n = tonumber(s) or s=='x' and -1 or 0
+				n = math.max(-1, n + d)
+				f[-y] = n > 0 and tostring(n) or lu[n]
+				t.Finger = table.concat(f, ' ')
+			end
 		end
 	end
 end
