@@ -1,4 +1,4 @@
--- Version x1.02
+-- Version x1.03
 
 --[[----------------------------------------------------------------
 This plugin draw a guitar chord chart and optionally strums the chord when the song is played. 
@@ -71,7 +71,7 @@ local styleListFull = {
 }
 local styleList = { 'Serif', 'Sans', 'Swing' }
 
-local stringNames = { '&E', '&A', '&D', '&G', '&B', '&High E' }
+local stringNames = { '1 (E)', '2 (A)', '3 (D)', '4 (G)', '5 (B)', '6 (e)' }
 
 local strings = #stringNames
 
@@ -218,12 +218,13 @@ local commonChords = {
 	['Bm7'] = { 'x 2 4 2 3 2', '2:6', 1 }
 }
 
+local chordNames = {}
+for k, _ in pairs(commonChords) do
+	table.insert(chordNames, k)
+end
+table.sort(chordNames)
+
 local function _create(t)
-	local chordNames = {}
-	for k, _ in pairs(commonChords) do
-		table.insert(chordNames, k)
-	end
-	table.sort(chordNames)
 	local chord = nwcui.prompt('Select a Chord','|' .. table.concat(chordNames,'|'))
 	if not chord then return end
 	t.Name = (chord == '(Custom)') and '' or chord
@@ -235,7 +236,7 @@ end
 local lu = { [-1]='x', [0]='o' }
 
 local function _spin(t, d)
-	t.ap = t.ap or 10 -- default to Span
+	t.ap = t.ap or 12 -- default to Span
 	local y = _menu[tonumber(t.ap)].data
 	if type(y) == 'table' then
 		for _, y1 in ipairs(y) do
@@ -426,6 +427,10 @@ local function _play(t)
 	end
 end
 
+local function _audit(t)
+	t.ap = nil
+end
+
 return {
 	spec = _spec,
 	create = _create,
@@ -433,6 +438,7 @@ return {
 	spin = _spin,
 	draw = _draw,
 	play = _play,
+	audit = _audit,
 	menu = _menu,
 	menuInit = _menuInit,
 	menuClick = _menuClick,
