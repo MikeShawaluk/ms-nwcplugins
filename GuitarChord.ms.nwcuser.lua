@@ -1,4 +1,4 @@
--- Version x1.03
+-- Version x1.04
 
 --[[----------------------------------------------------------------
 This plugin draw a guitar chord chart and optionally strums the chord when the song is played. 
@@ -279,6 +279,7 @@ local function _draw(t)
 	local _, my = nwcdraw.getMicrons()
 	local xyar = nwcdraw.getAspectRatio()
 	local size, frets, topFret, topBarreOffset, span = t.Size, t.Frets, t.TopFret, t.TopBarreOffset, t.Span
+	local ap = tonumber(t.ap or 0)
 	local penStyle = 'solid'
 	local lineThickness = my*0.125*size
 	local barreThickness = my*0.1*size
@@ -304,7 +305,8 @@ local function _draw(t)
 	local dotYOffset, dotXSize = -.25 * yspace, .375 * xspace
 	nwcdraw.setPen(penStyle, lineThickness)
 	for i = 0, strings - 1 do
-		nwcdraw.line(i * xspace + xoffset, 0, i * xspace + xoffset, height)
+		local func = i == ap-2 and nwcdraw.hintline or nwcdraw.line
+		func(i * xspace + xoffset, 0, i * xspace + xoffset, height)
 	end
 	for i = 0, frets do
 		nwcdraw.line(xoffset, i * yspace, xoffset + width, i * yspace)
