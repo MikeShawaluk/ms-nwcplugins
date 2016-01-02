@@ -1,4 +1,4 @@
--- Version 1.0
+-- Version 1.1
 
 --[[----------------------------------------------------------------
 This plugin draw a guitar chord chart and optionally strums the chord when the song is played. 
@@ -71,15 +71,17 @@ local styleListFull = {
 }
 local styleList = { 'Serif', 'Sans', 'Swing' }
 
-local strings = 6
+local stringNames = { '1 (E)', '2 (A)', '3 (D)', '4 (G)', '5 (B)', '6 (e)' }
 
-local spec_GuitarChord = {
+local strings = #stringNames
+
+local _spec = {
 	{ id='Name', label='Chord Name', type='text', default='' },
     { id='Style', label='Font Style', type='enum', default=styleList[1], list=styleList },
 	{ id='Finger', label='Fingerings', type='text', default='' },
 	{ id='Barre', label='Barres', type='text', default='' },
 	{ id='Size', label='Chart Size', type='float', default=1, min=0.5, max=5, step=.5 },
-	{ id='Frets', label='Frets to Show', type='int', default=4, min=1, max=10 },
+	{ id='Frets', label='Frets to Show', type='int', default=4, min=3, max=10 },
 	{ id='Capo', label='Capo Position', type='int', default=0, min=0 },
 	{ id='TopFret', label='Top Fret', type='int', default=1, min=1 },
 	{ id='Span', label='Note Span', type='int', default=0, min=0 },
@@ -88,6 +90,88 @@ local spec_GuitarChord = {
 	{ id='TopBarreOffset', label='Top Barre Offset', type='float', default=0, min=0, step=.5 },
 	{ id='Anticipated', label='Anticipated Playback', type='bool', default=true },
 }
+
+local spinnable = { int=true, float=true }
+local boolOrEnum = { bool='command', enum='choice' }
+
+local _menu = {
+	{ type='command', name='Choose Spin Target:', disable=true },
+}
+local sep = true
+for k, s in ipairs(stringNames) do
+	_menu[#_menu+1] = {	type='command', name=s, disable=false, separator=sep, data=-k }
+	sep = false
+end
+for k, s in ipairs(_spec) do
+	if spinnable[s.type] and s.id ~= 'Capo' then
+		_menu[#_menu+1] = {	type='command', name=s.label, disable=false, data=k }
+	end
+end
+local sep = true
+for k, s in ipairs(_spec) do
+	local t = boolOrEnum[s.type]
+	if t then
+		local a = {	type=t, list=s.list, name=s.label, disable=false, separator=sep, data=k }
+		sep = false
+		_menu[#_menu+1] = a
+	end
+end
+
+local function parseStrings(str)
+	local tbl = {}
+	for s in str:gmatch('%S+') do 
+		tbl[#tbl+1] = s
+	end
+	while #tbl < 6 do
+		tbl[#tbl+1] = ''
+	end
+	return tbl
+end
+
+local function _menuInit(t)
+	local f = parseStrings(t.Finger)
+	local ap = tonumber(t.ap)
+	for k, m in ipairs(_menu) do
+		local w = m.data or 0
+		if w < 0 then
+			m.name = string.format('%s\t%s', stringNames[-w], f[-w] or '')
+			m.checkmark = (k == ap)
+		else
+			local s = _spec[w]
+			if s then
+				local v = t[s.id]
+				if s.type == 'bool' then
+					m.checkmark = v
+				elseif s.type == 'enum' then
+					m.default = v
+				else
+					m.name = string.format('%s\t%s', s.label, v)
+					m.checkmark = (k == ap)
+				end
+			end
+		end
+	end
+end
+
+local function _menuClick(t, menu, choice)
+	local m = _menu[menu]
+	local w = m.data or 0
+	if w > 0 then
+		local s = _spec[w]
+		local v = t[s.id]
+		if s.type == 'bool' then
+			t[s.id] = not v
+		elseif s.type == 'enum' then
+			t[s.id] = m.list[choice]
+		elseif s.type == 'text' then
+			t[s.id] = nwcui.prompt(string.format('Enter %s:', string.gsub(s.label, '&', '')), '*', v)
+		else
+			t.ap = menu
+		end
+	else
+		t.ap = menu
+	end
+end
 
 local commonChords = {
 	['(Custom)'] = { '', '', 1 },
@@ -128,12 +212,13 @@ local commonChords = {
 	['Bm7'] = { 'x 2 4 2 3 2', '2:6', 1 }
 }
 
-local function create_GuitarChord(t)
-	local chordNames = {}
-	for k, _ in pairs(commonChords) do
-		table.insert(chordNames, k)
-	end
-	table.sort(chordNames)
+local chordNames = {}
+for k, _ in pairs(commonChords) do
+	table.insert(chordNames, k)
+end
+table.sort(chordNames)
+
+local function _create(t)
 	local chord = nwcui.prompt('Select a Chord','|' .. table.concat(chordNames,'|'))
 	if not chord then return end
 	t.Name = (chord == '(Custom)') and '' or chord
@@ -142,9 +227,33 @@ local function create_GuitarChord(t)
 	t.TopFret = commonChords[chord][3]
 end
 
-local function spin_GuitarChord(t, dir)
-	t.Span = t.Span + dir
-	t.Span = t.Span
+local lu = { [-1]='x', [0]='o' }
+
+local function _spin(t, d)
+	t.ap = t.ap or 12 -- default to Span
+	local y = _menu[tonumber(t.ap)].data
+	if type(y) == 'table' then
+		for _, y1 in ipairs(y) do
+			local x = _spec[y1].id
+			t[x] = t[x] + d*_spec[y1].step
+			t[x] = t[x]
+		end
+	else
+		if y > 0 then
+			local x = _spec[y].id
+			t[x] = t[x] + d*(_spec[y].step or 1)
+			t[x] = t[x]
+		else
+			local f = parseStrings(t.Finger)
+			local s = f[-y]
+			if s then
+				local n = tonumber(s) or s=='x' and -1 or 0
+				n = math.max(-1, n + d)
+				f[-y] = n > 0 and tostring(n) or lu[n]
+				t.Finger = table.concat(f, ' ')
+			end
+		end
+	end
 end
 
 local function hasTargetDuration()
@@ -156,14 +265,15 @@ local function hasTargetDuration()
 	return false
 end
 
-local function width_GuitarChord(t)
+local function _width(t)
 	return hasTargetDuration() and 0 or strings * t.Size / nwcdraw.getAspectRatio()
 end
 
-local function draw_GuitarChord(t)
+local function _draw(t)
 	local _, my = nwcdraw.getMicrons()
 	local xyar = nwcdraw.getAspectRatio()
 	local size, frets, topFret, topBarreOffset, span = t.Size, t.Frets, t.TopFret, t.TopBarreOffset, t.Span
+	local ap = tonumber(t.ap or 0)
 	local penStyle = 'solid'
 	local lineThickness = my*0.125*size
 	local barreThickness = my*0.1*size
@@ -189,7 +299,8 @@ local function draw_GuitarChord(t)
 	local dotYOffset, dotXSize = -.25 * yspace, .375 * xspace
 	nwcdraw.setPen(penStyle, lineThickness)
 	for i = 0, strings - 1 do
-		nwcdraw.line(i * xspace + xoffset, 0, i * xspace + xoffset, height)
+		local func = i == ap-2 and nwcdraw.hintline or nwcdraw.line
+		func(i * xspace + xoffset, 0, i * xspace + xoffset, height)
 	end
 	for i = 0, frets do
 		nwcdraw.line(xoffset, i * yspace, xoffset + width, i * yspace)
@@ -278,7 +389,7 @@ local function draw_GuitarChord(t)
 	end
 end
 
-local function play_GuitarChord(t)
+local function _play(t)
 	if not hasTargetDuration() then return end
 	local span, capo, strum = t.Span, t.Capo, t.Strum
 	local stringNotes = {40, 45, 50, 55, 59, 64}
@@ -312,11 +423,19 @@ local function play_GuitarChord(t)
 	end
 end
 
+local function _audit(t)
+	t.ap = nil
+end
+
 return {
-	spec = spec_GuitarChord,
-	create = create_GuitarChord,
-	width = width_GuitarChord,
-	spin = spin_GuitarChord,
-	draw = draw_GuitarChord,
-	play = play_GuitarChord
+	spec = _spec,
+	create = _create,
+	width = _width,
+	spin = _spin,
+	draw = _draw,
+	play = _play,
+	audit = _audit,
+	menu = _menu,
+	menuInit = _menuInit,
+	menuClick = _menuClick,
 }
