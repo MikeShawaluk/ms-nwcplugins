@@ -1,4 +1,4 @@
--- Version 0.9
+-- Version 1.0
 
 --[[----------------------------------------------------------------
 This will draw a brace of configurable size, weight and direction. This can be useful for lyrics and other purposes.
@@ -22,7 +22,7 @@ local _spec = {
     { id='Height', label='&Height', type='float', step=0.5, min=0, max=100, default=10 },
 	{ id='Width', label='&Width', type='float', step=0.1, min=0, max=5, default=1 },
 	{ id='Offset', label='&Offset', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='Weight', label='&Line Weigth', type='float', step=0.1, min=0, max=5, default=1 },
+	{ id='Weight', label='&Line Weight', type='float', step=0.1, min=0, max=5, default=1 },
 	{ id='Direction', label='&Direction', type='enum', default=dirList[1], list=dirList },
 }
 
@@ -54,10 +54,10 @@ local function _menuInit(t)
 		if m.data then
 			local s = _spec[m.data]
 			if s then
-			local v = t[s.id]
+				local v = t[s.id]
 				if m.type == 'command' then
 					m.checkmark = (k == ap)
-					m.name = string.format('%s\t(%s)', s.label, v)
+					m.name = string.format('%s\t%s', s.label, v)
 				else
 					m.default = v
 				end
