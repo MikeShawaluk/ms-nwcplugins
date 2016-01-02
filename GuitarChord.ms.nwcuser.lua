@@ -1,4 +1,4 @@
--- Version x1.04
+-- Version x1.05
 
 --[[----------------------------------------------------------------
 This plugin draw a guitar chord chart and optionally strums the chord when the song is played. 
@@ -92,6 +92,7 @@ local _spec = {
 }
 
 local spinnable = { int=true, float=true }
+local boolOrEnum = { bool='command', enum='choice' }
 
 local _menu = {
 	{ type='command', name='Choose Spin Target:', disable=true },
@@ -101,24 +102,17 @@ for k, s in ipairs(stringNames) do
 	_menu[#_menu+1] = {	type='command', name=s, disable=false, separator=sep, data=-k }
 	sep = false
 end
-local sep = true
 for k, s in ipairs(_spec) do
-	if spinnable[s.type] then
-		_menu[#_menu+1] = {	type='command', name=s.label, disable=false, separator=sep, data=k }
-		sep = false
+	if spinnable[s.type] and s.id ~= 'Capo' then
+		_menu[#_menu+1] = {	type='command', name=s.label, disable=false, data=k }
 	end
 end
 local sep = true
 for k, s in ipairs(_spec) do
-	if not spinnable[s.type] then
-		local a = {	name=s.label, disable=false, separator=sep, data=k }
+	local t = boolOrEnum[s.type]
+	if t then
+		local a = {	type=t, list=s.list, name=s.label, disable=false, separator=sep, data=k }
 		sep = false
-		if s.type == 'enum' then
-			a.type = 'choice'
-			a.list = s.list
-		else
-			a.type = 'command'
-		end
 		_menu[#_menu+1] = a
 	end
 end
