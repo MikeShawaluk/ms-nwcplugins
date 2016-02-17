@@ -1,4 +1,4 @@
--- Version 1.1
+-- Version 1.2
 
 --[[----------------------------------------------------------------
 This plugin draw a guitar chord chart and optionally strums the chord when the song is played. 
@@ -7,6 +7,9 @@ positions, fret position and optional finger numbers.
 
 When adding a new chord, the user can choose from 35 predefined chords, or can choose "(Custom)"
 to create a chord chart from scratch. The chord chart can be positioned vertical by changing the object marker position.
+
+When a chord is added to a staff, if there is another GuitarChord object earlier in the staff,
+it will inherit the style and properties of that object.
 @Name
 The name of the chord. It is displayed using a font which displays 'b' and '#' as flat and sharp symbols.
 @Style
@@ -59,7 +62,7 @@ strummed chord is at the chord's beat position. The default setting is on (check
 --]]----------------------------------------------------------------
 
 local userObjTypeName = ...
-local userObj = nwc.ntnidx
+local idx = nwc.ntnidx
 local user = nwcdraw.user
 local searchObj = nwc.ntnidx.new()
 local strumStyles = { 'up', 'down' }
@@ -225,6 +228,17 @@ local function _create(t)
 	t.Finger = commonChords[chord][1]
 	t.Barre = commonChords[chord][2]
 	t.TopFret = commonChords[chord][3]
+	if idx:find('prior', 'user', userObjTypeName) then
+		t.Style = idx:userProp('Style')
+		t.Size = idx:userProp('Size')
+		t.Frets = idx:userProp('Frets')
+		t.Capo = idx:userProp('Capo')
+		t.FretTextPosition = idx:userProp('FretTextPosition')
+		t.Strum = idx:userProp('Strum')
+		t.Anticipated = idx:userProp('Anticipated')
+		t.Span = idx:userProp('Span')
+		t.Pos = idx:userProp('Pos')
+	end	
 end
 
 local lu = { [-1]='x', [0]='o' }
