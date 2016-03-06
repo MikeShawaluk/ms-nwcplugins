@@ -1,4 +1,4 @@
--- Version 1.0
+-- Version 1.1
 
 --[[----------------------------------------------------------------
 This plugin creates two-note tremolo markings. It draws the markings, and will optionally play the notes in tremolo style.
@@ -26,6 +26,9 @@ Enables playback of the tremolo. The default setting is enabled (checked).
 Note that the tremolo RestChords should be muted for proper playback.
 @TripletPlayback
 Specifies that the playback notes should be in triplet rhythm. This will generally be used when the tremolo notes are dotted. The default setting is disabled (unchecked).
+@Variance
+Specifies a dynamic variance between the first and second chord. The specified value is a multiplier for the
+volume of the second note. This allows more realistic playback. The range of values is 50% to 200%, and the default setting is 100% (no variance).
 --]]----------------------------------------------------------------
 
 local user = nwcdraw.user
@@ -36,7 +39,8 @@ local spec_Tremolo = {
 	{ id='Beams', label='Number of Beams', type='int', default=3, min=1, max=4 },
 	{ id='Style', label='Half Note Beam Style', type='int', default=1, min=1, max=3 },
 	{ id='Play', label='Play Notes', type='bool', default=true },
-	{ id='TripletPlayback', label='Triplet Playback', type='bool', default=false }
+	{ id='TripletPlayback', label='Triplet Playback', type='bool', default=false },
+	{ id='Variance', label='Variance (%)', type='int', default=100, min=50, max=200, step=5 },
 }
 
 local function draw_Tremolo(t)
@@ -95,20 +99,23 @@ local function draw_Tremolo(t)
 	end
 end
 
-local _play = {nwc.ntnidx.new(), nwc.ntnidx.new()}
+local _play = { nwc.ntnidx.new(), nwc.ntnidx.new() }
 local function play_Tremolo(t)
 	if not t.Play then return end
 	local dur = nwcplay.PPQ / 2^t.Beams * (t.TripletPlayback and 2/3 or 1)
 	_play[2]:find('next', 'note')
 	_play[2]:find('next')
-	local fini, i = _play[2]:sppOffset() - 1
+	local fini = _play[2]:sppOffset() - 1
 	_play[1]:find('prior', 'note')
 	_play[2]:find('prior')
+	local defaultVel = nwcplay.getNoteVelocity()
+	local vel = { defaultVel, math.min(127, defaultVel * t.Variance/100) }
+	local i = 1
 	for spp = _play[1]:sppOffset(), fini, dur do
-		i = i==1 and 2 or 1
 		for j = 1, _play[i]:noteCount() or 0 do 
-			nwcplay.note(spp, dur, nwcplay.getNoteNumber(_play[i]:notePitchPos(j)))
+			nwcplay.note(spp, dur, nwcplay.getNoteNumber(_play[i]:notePitchPos(j)), vel[i])
 		end
+		i = 3 - i
 	end
 end
 

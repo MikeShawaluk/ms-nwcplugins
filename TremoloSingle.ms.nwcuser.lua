@@ -1,4 +1,4 @@
--- Version 1.2
+-- Version 1.3
 
 --[[----------------------------------------------------------------
 This object creates a single note tremolo marking. It draws the markings, and will optionally play the note in tremolo style.
@@ -6,6 +6,8 @@ This object creates a single note tremolo marking. It draws the markings, and wi
 To create the tremolo, insert the object immediately before the note to receive the tremolo, and the marking 
 will be drawn on the note's stem, or above/below a whole note. The note can be any chord or RestChord.
 If additional space is needed to accommodate a larger number of beams, increase the note's stem length.
+
+Please note that this object requires that Class be set to Standard for proper operation. During a score refresh, the Class property for all such objects will be reset to Standard.
 @Beams
 The number of beams to be drawn, between 1 and 4. The default setting is 3.
 
@@ -30,6 +32,10 @@ notes are dotted. The default setting is disabled (unchecked).
 @Which
 Specifies which split chord member (top or bottom) should receive the tremolo marking and be played. This parameter is
 ignored for non-split chords and rest chords. The default setting is top.
+@Variance
+Specifies a dynamic variance between the two notes for each repetition. The specified value is a multiplier for the
+volume of the second note. This allows more realistic playback for stringed instruments such as the mandolin.
+The range of values is 50% to 200%, and the default setting is 100% (no variance).
 --]]----------------------------------------------------------------
 
 local user = nwcdraw.user
@@ -43,6 +49,7 @@ local spec_TremoloSingle = {
 	{ id='Play', label='Play Notes', type='bool', default=true },
 	{ id='TripletPlayback', label='Triplet Playback', type='bool', default=false },
 	{ id='Which', label='Split Chord Member', type='enum', default=whichList[1], list=whichList },
+	{ id='Variance', label='Variance (%)', type='int', default=100, min=50, max=200, step=5 },
 }
 
 local beamHeight, beamSpacing, beamHalfWidth, beamStemOffset, beamSlope = .6, 1.6, 0.55, 1, 0.6
@@ -85,6 +92,10 @@ local function spin_TremoloSingle(t,dir)
 	t.Beams = t.Beams
 end
 
+local function audit_TremoloSingle(t)
+	t.Class = 'Standard'
+end
+
 local _play = nwc.ntnidx.new()
 local function play_TremoloSingle(t)
 	if not t.Play then return end
@@ -95,12 +106,16 @@ local function play_TremoloSingle(t)
 	_play:find('next')
 	local fini = _play:sppOffset() - 1
 	_play:find('prior')
+	local defaultVel = nwcplay.getNoteVelocity()
+	local vel = { defaultVel, math.min(127, defaultVel * t.Variance/100) }
+	local i = 1
 	for spp = _play:sppOffset(), fini, dur do
 		for j = 1, _play:noteCount() or 0 do
 			if not _play:isSplitVoice(j) or whichStemDir == _play:stemDir(j) then
-				nwcplay.note(spp, dur, nwcplay.getNoteNumber(_play:notePitchPos(j)))
+				nwcplay.note(spp, dur, nwcplay.getNoteNumber(_play:notePitchPos(j)), vel[i])
 			end
 		end
+		i = 3 - i
 	end
 end
 
@@ -108,5 +123,6 @@ return {
 	spec = spec_TremoloSingle,
     spin = spin_TremoloSingle,
 	draw = draw_TremoloSingle,
-	play = play_TremoloSingle
+	play = play_TremoloSingle,
+	audit = audit_TremoloSingle,
 }
