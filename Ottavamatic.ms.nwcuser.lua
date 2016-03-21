@@ -1,4 +1,4 @@
--- Version 1.2
+-- Version 1.3
 
 --[[----------------------------------------------------------------
 This plugin draws 8va/15ma/22ma (bassa) markings in a score by looking for 
@@ -191,7 +191,7 @@ local function draw_Ottavamatic(t)
 		local nextPatchYPos = nextPatch:staffPos()
 		if not nextShift then nextPatch:find('last') end
 		if nextPatch > nextUser8va then nextPatch:find(nextUser8va) end
-		if priorShift and (priorShift ~= 0) then
+		if priorShift and (priorShift ~= 0) and (priorPatch < nextUser8va) then
 			priorPatch:find('next', what)
 			local extendingSection = priorPatch < drawpos
 			local endOfSection = true
