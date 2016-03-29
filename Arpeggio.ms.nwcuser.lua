@@ -1,4 +1,4 @@
--- Version 1.2
+-- Version 1.3
 
 --[[----------------------------------------------------------------
 This plugin draws an arpeggio marking next to a chord, and can optionally play the notes in 
@@ -110,7 +110,7 @@ local function draw_Arpeggio(t)
 	end
 	nwcdraw.setPen('solid', penWidth)
 	local count = math.floor((ytop - ybottom) / 2) + 2
-	local x = leftOnSide and offset - .75 or user:xyRight() + offset + .55
+	local x = leftOnSide and user:xyAnchor() + offset - .75 or user:xyRight() + offset + .55
 	local y = ytop + 2
 	for i = 1, count do
 		drawSquig(x, y)
