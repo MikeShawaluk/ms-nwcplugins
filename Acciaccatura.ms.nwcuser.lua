@@ -1,4 +1,4 @@
--- Version 1.0
+-- Version 1.1
 
 --[[-----------------------------------------------------------------------------------------
 This plugin creates acciaccatura by drawing a slash on the stem of a plain grace note
@@ -30,12 +30,12 @@ local function draw_Acciaccatura(t)
 			found = drawpos:find('next', 'note')
 		until drawpos:isGrace() or not found
 		
-		if found and drawpos < nextObj and drawpos:isGrace() and drawpos:durationBase() == 'Eighth' and not drawpos:isBeamed() then
+		if found and drawpos < nextObj and drawpos:isGrace() and drawpos:durationBase() == 'Eighth' and not drawpos:isBeamed() and not drawpos:isHidden() then
 			x, y = drawpos:xyStemTip()
 			y1 = y - drawpos:stemDir(0)*2.4 - 1
 			nwcdraw.line(x-.3, y1, x+.7, y1+2)
 		end
-		if not isStaffSig then return end
+		found = found and isStaffSig
 	end
 end
 
