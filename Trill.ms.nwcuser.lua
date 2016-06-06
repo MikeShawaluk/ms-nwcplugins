@@ -1,4 +1,4 @@
--- Version 1.1
+-- Version 1.2
 
 --[[----------------------------------------------------------------
 This plugin draws a trill above or below a set of notes, and optionally plays the trill.
@@ -133,7 +133,7 @@ local function play_Trill(t)
 	local sp = play1:staffPos()
 	local auxNoteInt = tonumber(t.AuxNoteInt) or 0
 
-	play1:find('next', 'note')
+	if not play1:find('next', 'note') then return end
 	play2:find('next', 'note')
 
 	local found
