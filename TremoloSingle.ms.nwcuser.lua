@@ -1,4 +1,4 @@
--- Version 1.3
+-- Version 2.0
 
 --[[----------------------------------------------------------------
 This object creates a single note tremolo marking. It draws the markings, and will optionally play the note in tremolo style.
@@ -38,13 +38,14 @@ volume of the second note. This allows more realistic playback for stringed inst
 The range of values is 50% to 200%, and the default setting is 100% (no variance).
 --]]----------------------------------------------------------------
 
+local idx = nwc.ntnidx
 local user = nwcdraw.user
 local durations = { Eighth=1, Sixteenth=2, Thirtysecond=3, Sixtyfourth=4 }
 local whichList = { 'top', 'bottom' }
 local whichStemDirList = { top=1, bottom=-1}
 
-local spec_TremoloSingle = {
-	{ id='Beams', label='Number of Beams', type='int', default=3, min=1, max=4 },
+local _spec = {
+	{ id='Beams', label='Number of Beams', type='int', default=3, min=1, max=4, step=1 },
 	{ id='Offset', label='Vertical Offset', type='float', default=0, min=-5, max=5, step=.5 },
 	{ id='Play', label='Play Notes', type='bool', default=true },
 	{ id='TripletPlayback', label='Triplet Playback', type='bool', default=false },
@@ -54,7 +55,7 @@ local spec_TremoloSingle = {
 
 local beamHeight, beamSpacing, beamHalfWidth, beamStemOffset, beamSlope = .6, 1.6, 0.55, 1, 0.6
 
-local function draw_TremoloSingle(t)
+local function _draw(t)
 	local _, my = nwcdraw.getMicrons()
 	local stemWeight = my*0.0126
 	local offset = t.Offset
@@ -87,42 +88,73 @@ local function draw_TremoloSingle(t)
 	end
 end
 
-local function spin_TremoloSingle(t,dir)
-	t.Beams = t.Beams + dir
-	t.Beams = t.Beams
-end
-
-local function audit_TremoloSingle(t)
+local function _audit(t)
 	t.Class = 'Standard'
 end
 
-local _play = nwc.ntnidx.new()
-local function play_TremoloSingle(t)
+local function _play(t)
 	if not t.Play then return end
-	_play:find('next', 'note')
-	local whichStemDir = _play:objType() == 'RestChord' and _play:stemDir(1) or whichStemDirList[t.Which]
-	local b = t.Beams + (durations[_play:durationBase(1)] or 0)
+	if not idx:find('next', 'note') then return end
+	local whichStemDir = idx:objType() == 'RestChord' and idx:stemDir(1) or whichStemDirList[t.Which]
+	local b = t.Beams + (durations[idx:durationBase(1)] or 0)
 	local dur = nwcplay.PPQ / 2^b * (t.TripletPlayback and 2/3 or 1)	
-	_play:find('next')
-	local fini = _play:sppOffset() - 1
-	_play:find('prior')
+	idx:find('next')
+	local fini = idx:sppOffset() - 1
+	idx:find('prior')
 	local defaultVel = nwcplay.getNoteVelocity()
 	local vel = { defaultVel, math.min(127, defaultVel * t.Variance/100) }
 	local i = 1
-	for spp = _play:sppOffset(), fini, dur do
-		for j = 1, _play:noteCount() or 0 do
-			if not _play:isSplitVoice(j) or whichStemDir == _play:stemDir(j) then
-				nwcplay.note(spp, dur, nwcplay.getNoteNumber(_play:notePitchPos(j)), vel[i])
+	for spp = idx:sppOffset(), fini, dur do
+		for j = 1, idx:noteCount() or 0 do
+			if not idx:isSplitVoice(j) or whichStemDir == idx:stemDir(j) then
+				nwcplay.note(spp, dur, nwcplay.getNoteNumber(idx:notePitchPos(j)), vel[i])
 			end
 		end
-		i = 3 - i
+        i = 3 - i
 	end
 end
 
+local function flipDir(t)
+	if not idx:find('next', 'note') then return 1 end
+	local whichVoice = t.Which == whichList[1] and idx:noteCount() or 1
+	return idx:stemDir(whichVoice) * (idx:durationBase(whichVoice) == 'Whole' and -1 or 1)
+end
+
+local function updateEnum(t, n, w)
+	local s = _spec[n]
+	local x = s.id
+	t[x] = s.list[w]
+end
+
+local function updateParam(t, n, dir)
+	dir = dir * (n == 2 and flipDir(t) or 1)
+	local s = _spec[n]
+	local x = s.id
+	t[x] = t[x] + dir*s.step
+	t[x] = t[x]
+end
+
+local charTable = {
+	['8'] = { updateParam, 2, -1 },
+	['2'] = { updateParam, 2, 1 },
+	['+'] = { updateParam, 1, 1 },
+	['-'] = { updateParam, 1, -1 },
+	['9'] = { updateEnum, 5, 1 },
+	['3'] = { updateEnum, 5, 2 },
+}
+
+local function _onChar(t, c)
+	local x = string.char(c)
+	local ptr = charTable[x]
+	if not ptr then return false end
+	ptr[1](t, ptr[2], ptr[3])
+	return true
+end
+
 return {
-	spec = spec_TremoloSingle,
-    spin = spin_TremoloSingle,
-	draw = draw_TremoloSingle,
-	play = play_TremoloSingle,
-	audit = audit_TremoloSingle,
+	spec = _spec,
+	draw = _draw,
+	play = _play,
+	onChar = _onChar,
+    audit = _audit,
 }

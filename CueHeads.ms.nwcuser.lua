@@ -1,4 +1,4 @@
--- Version 0.4
+-- Version 1.0
 
 --[[-----------------------------------------------------------------------------------------
 This plugin draws cue noteheads in the positions of any blank note space noteheads on
@@ -16,54 +16,11 @@ local userObjTypeName = ...
 local userObjSigName = nwc.toolbox.genSigName(userObjTypeName)
 local drawpos = nwcdraw.user
 local nextObj = nwc.ntnidx.new()
-local alignSide = { [1]='right', [-1]='left' }
 local noteHeadChar = { Whole='i', Half='j', Other='k' }
 
 local _spec = {
     { id='Size', label='Notehead Size (%)', type='int', min=50, max=90, step=10, default=70 },
 }
-
-local function drawNotehead(ptr, i, side)
-	local noteHead = string.match(ptr:notePitchPos(i), '-?%d+(.)')
-	if noteHead ~= 'z' then return end
-	local dur = ptr:durationBase(i)
-	local x, y = ptr:xyStemAnchor(ptr:stemDir(i))
-	nwcdraw.alignText('baseline', alignSide[side])
-	nwcdraw.moveTo(x, ptr:notePos(i))
-	nwcdraw.text(noteHeadChar[dur] or noteHeadChar.Other)
-end
-
-local function drawCuesLoop(ptr, first, last, stemDir)
-	local side, dist = stemDir
-	if stemDir < 0 then first, last = last, first end
-	drawNotehead(ptr, first, side)
-	if last ~= first then 
-		for i = first+stemDir, last, stemDir do
-			dist = (ptr:notePos(i) - ptr:notePos(i-stemDir))*stemDir
-			if dist == 1 then
-				side = -side
-			elseif dist >= 2 then
-				side = stemDir
-			end
-			drawNotehead(ptr, i, side)
-		end
-	end
-
-end
-
-local function drawCues(ptr)
-	local noteCount = ptr:noteCount()
-	if ptr:isSplitVoice() and ptr:objType() ~= 'RestChord' then
-		local split
-		for i = 2, noteCount do
-			if ptr:stemDir(i) ~= ptr:stemDir(i-1) then split = i end
-		end
-		drawCuesLoop(ptr, split, noteCount, 1)
-		drawCuesLoop(ptr, 1, split-1, -1)
-	else
-		drawCuesLoop(ptr, 1, noteCount, ptr:stemDir(1))
-	end
-end
 
 local function _draw(t)
 	local isStaffSig = (t.Class == 'StaffSig')
@@ -72,7 +29,7 @@ local function _draw(t)
 	if drawpos:isHidden() then return end
 	nwcdraw.setFontClass('StaffSymbols')
 	nwcdraw.setFontSize(nwcdraw.getFontSize() * t.Size*.01)
-
+	local x, y, x1, noteHead
 	if not nextObj:find('next', 'user', userObjTypeName) then nextObj:find('last') end
 	local found = true
 	while found do
@@ -81,7 +38,15 @@ local function _draw(t)
 		until not drawpos:isGrace() or not found
 		
 		if found and drawpos < nextObj then
-			drawCues(drawpos)
+			for i = 1, drawpos:noteCount() do
+				x, y, noteHead = drawpos:xyNoteHead(i)
+				if noteHead == string.byte('z') then
+					x1 = drawpos:xyStemAnchor(drawpos:stemDir(i))
+					nwcdraw.alignText('baseline', x1-x < .5 and 'left' or 'right')
+					nwcdraw.moveTo(x1, y)
+					nwcdraw.text(noteHeadChar[drawpos:durationBase(i)] or noteHeadChar.Other)
+				end
+			end
 		end
 		if not isStaffSig then return end
 	end

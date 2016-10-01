@@ -1,4 +1,4 @@
--- Version 1.3
+-- Version 2.0
 
 --[[----------------------------------------------------------------
 This will draw a glissando line between two notes, with optional text above the line. If either of the notes is a chord, the bottom notehead
@@ -27,8 +27,9 @@ local nextNote = nwc.drawpos.new()
 local priorNote = nwc.drawpos.new()
 local lineStyles = { 'solid', 'dot', 'dash', 'wavy' }
 local squig = '~'
+local showBoxes = { edit=true }
 
-local spec_Glissando = {
+local _spec = {
 	{ id='Pen', label='Line Style', type='enum', default=lineStyles[1], list=lineStyles },
 	{ id='Text', label='Text', type='text', default='gliss.' },
     { id='Scale', label='Text Scale (%)', type='int', min=5, max=400, step=5, default=75 },
@@ -39,14 +40,30 @@ local spec_Glissando = {
 	{ id='Weight', label='Line Weight', type='float', default=1, min=0, max=5, step=0.1 }
 }
 
-local function audit_Glissando(t)
+local _spec2 = {}
+
+for k, v in ipairs(_spec) do
+	_spec2[v.id] = k
+end
+
+local function _audit(t)
 	if t.Style then
 		if (t.Style == 'Wavy') then t.Pen = 'wavy' end
 		t.Style = nil
 	end
+	t.ap = nil
 end
 
-local function draw_Glissando(t)
+local function box(x, y, ap, p)
+	local m = (ap == p) and 'strokeandfill' or 'stroke'
+	nwcdraw.setPen('solid', 100)
+	nwcdraw.moveTo(x, y)
+	nwcdraw.beginPath()
+	nwcdraw.roundRect(0.2)
+	nwcdraw.endPath(m)
+end
+
+local function _draw(t)
 	local xyar = nwcdraw.getAspectRatio()
     local _, my = nwcdraw.getMicrons()
 	local pen, text, weight = t.Pen, t.Text, t.Weight
@@ -87,16 +104,98 @@ local function draw_Glissando(t)
 		nwcdraw.moveTo(x1, y1-1)
 		nwcdraw.text(string.rep(squig, count), angle)
 	end
+	if t.ap and showBoxes[nwcdraw.getTarget()] then
+		local ap = tonumber(t.ap)
+		box(x1, y1, ap, 1)
+		box(x2, y2, ap, 2)
+	end
 end
 
-local function spin_Glissando(t, d)
-	t.Scale = t.Scale + d*5
-	t.Scale = t.Scale
+local paramTable = {
+	{ _spec2.StartOffsetX, _spec2.StartOffsetY },
+	{ _spec2.EndOffsetX, _spec2.EndOffsetY },
+}
+
+local function toggleParam(t)
+	local ap = tonumber(t.ap) or #paramTable
+	ap = ap % #paramTable + 1
+	t.ap = ap
 end
+
+local function updateParam(t, p, dir)
+	local s = _spec[p]
+	local x = s.id
+	t[x] = t[x] + dir*s.step
+	t[x] = t[x]
+end
+	
+local function updateActiveParam(t, n, dir)
+	local ap = tonumber(t.ap)
+	if ap then 
+		updateParam(t, paramTable[ap][n], dir)
+	end
+end
+
+local function updateEnds(t, dir)
+	updateParam(t, _spec2.StartOffsetY, dir)
+	updateParam(t, _spec2.EndOffsetY, dir)
+end
+
+local skip = { Text=true }
+
+local function defaultAllParams(t)
+	for k, s in ipairs(_spec) do
+		if not skip[s.id] then t[s.id] = t[s.default] end
+	end
+end
+
+local function defaultActiveParam(t)
+	local ap = tonumber(t.ap)
+	if ap then
+		for i = 1, 2 do
+			local s = _spec[paramTable[ap][i]]
+			t[s.id] = s.default
+		end
+	end
+end
+
+local function toggleEnum(t, p)
+	local s = _spec[p]
+	local q = {}
+	for k, v in ipairs(s.list) do
+		q[v] = k
+	end
+	t[s.id] = s.list[q[t[s.id]] + 1]
+end
+
+local charTable = {
+	['+'] = { updateParam, _spec2.Scale, 1 },
+	['-'] = { updateParam, _spec2.Scale, -1 },
+	['7'] = { updateParam, _spec2.Weight, 1 },
+	['1'] = { updateParam, _spec2.Weight, -1 },
+	['8'] = { updateActiveParam, 2, 1 },
+	['2'] = { updateActiveParam, 2, -1 },
+	['6'] = { updateActiveParam, 1, 1 },
+	['4'] = { updateActiveParam, 1, -1 },
+	['5'] = { toggleParam },
+	['9'] = { updateEnds, 1 },
+	['3'] = { updateEnds, -1 },
+	['0'] = { defaultActiveParam },
+	['Z'] = { defaultAllParams },
+	['.'] = { toggleEnum, _spec2.Pen },
+}
+
+local function _onChar(t, c)
+	local ptr = charTable[string.char(c)]
+	if not ptr then return false end
+	ptr[1](t, ptr[2], ptr[3])
+	return true
+end
+
 
 return {
-	spec = spec_Glissando,
-	audit = audit_Glissando,
-	spin = spin_Glissando,
-	draw = draw_Glissando
+	spec = _spec,
+	audit = _audit,
+	onChar = _onChar,
+	draw = _draw
 }
