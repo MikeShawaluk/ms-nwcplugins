@@ -1,4 +1,4 @@
--- Version 1.2
+-- Version 1.3
 
 --[[----------------------------------------------------------------
 This plugin draw a guitar chord chart and optionally strums the chord when the song is played. 
@@ -90,7 +90,7 @@ local _spec = {
 	{ id='Span', label='Note Span', type='int', default=0, min=0 },
 	{ id='FretTextPosition', label='Fret Text Location', type='enum', default='top', list=fretTextPos },
 	{ id='Strum', label='Strum Direction', type='enum', default='down', list=strumStyles },
-	{ id='TopBarreOffset', label='Top Barre Offset', type='float', default=0, min=0, step=.5 },
+	{ id='TopBarreOffset', label='Top Barre Offset', type='float', default=0, min=0, step=.25 },
 	{ id='Anticipated', label='Anticipated Playback', type='bool', default=true },
 }
 
@@ -260,10 +260,12 @@ local function _spin(t, d)
 		else
 			local f = parseStrings(t.Finger)
 			local s = f[-y]
-			if s then
-				local n = tonumber(s) or s=='x' and -1 or 0
+			local s1 = s:match('(%S)')
+			local s2 = s:match(':(%S)')
+			if s1 then
+				local n = tonumber(s1) or s1=='x' and -1 or 0
 				n = math.max(-1, n + d)
-				f[-y] = n > 0 and tostring(n) or lu[n]
+				f[-y] = n > 0 and tostring(n) .. (s2 and ':' .. s2 or '') or lu[n]
 				t.Finger = table.concat(f, ' ')
 			end
 		end
@@ -290,7 +292,7 @@ local function _draw(t)
 	local ap = tonumber(t.ap or 0)
 	local penStyle = 'solid'
 	local lineThickness = my*0.125*size
-	local barreThickness = my*0.1*size
+	local barreThickness = my*0.05*size
 	local xspace, yspace = size / xyar, size
 	local height = yspace * frets
 	local height2 = (topFret == 1) and height + .5 * yspace or height
@@ -346,6 +348,7 @@ local function _draw(t)
 			highFret = math.max(fretPos, highFret)
 			local y = yspace * (frets - fretPos + topFret - .5)
 			if y > 0 and y < height then
+				nwcdraw.setPen(penStyle, lineThickness)
 				nwcdraw.moveTo(x, y)
 				nwcdraw.beginPath()
 				nwcdraw.ellipse(dotXSize)
@@ -361,7 +364,7 @@ local function _draw(t)
 					local b1, b2 = b:match('(%d):(%d)')
 					b1, b2 = tonumber(b1), tonumber(b2)
 					if b1 and b2 and b1 == stringNum and b1 < b2 and b2 <= strings then
-						local y1 = (fretPos == 1) and height2 + .25 * yspace + tbo or y + .5 * yspace
+						local y1 = (fretPos == topFret) and height2 + .25 * yspace + tbo or y + .5 * yspace
 						local x2 = x + (b2 - b1) * xspace
 						nwcdraw.setPen(penStyle, barreThickness)
 						nwcdraw.moveTo(x, y1)
