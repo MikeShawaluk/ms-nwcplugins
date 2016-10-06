@@ -1,4 +1,4 @@
--- Version 2.0
+-- Version 2.0a
 
 --[[----------------------------------------------------------------
 This object creates a single note tremolo marking. It draws the markings, and will optionally play the note in tremolo style.
@@ -38,11 +38,44 @@ volume of the second note. This allows more realistic playback for stringed inst
 The range of values is 50% to 200%, and the default setting is 100% (no variance).
 --]]----------------------------------------------------------------
 
+if nwcut then
+	local userObjTypeName = arg[1]
+	nwcut.setlevel(2)
+	local addCount = 0
+	local beams = nwcut.prompt('Number of Beams:', '#[1,4]', 3)
+	
+	local function plural(value)
+		return value == 0 and 'No' or tostring(value), value == 1 and '' or 's'
+	end
+	
+	for item in nwcut.items() do
+		if item:IsFake() then
+			-- don't process these
+		elseif item:ContainsNotes() then
+			item:Provide('Opts').Muted = ''
+			local user = nwcItem.new('|User|' .. userObjTypeName)
+			user:Provide('Beams', beams)
+			user:Provide('Pos', 0)
+			nwcut.writeline(user)
+			addCount = addCount + 1
+		end
+		if not (item:Is('User') and item.UserType == userObjTypeName) then -- exclude existing TremoloSingle.ms objects in clip
+			nwcut.writeline(item)
+		end
+	end
+	nwcut.msgbox(string.format('%s tremolo%s will be added.', plural(addCount)))
+	return
+end
+
 local idx = nwc.ntnidx
 local user = nwcdraw.user
 local durations = { Eighth=1, Sixteenth=2, Thirtysecond=3, Sixtyfourth=4 }
 local whichList = { 'top', 'bottom' }
 local whichStemDirList = { top=1, bottom=-1}
+
+local _nwcut = {
+	['Create Single Tremolo'] = 'ClipText',
+}
 
 local _spec = {
 	{ id='Beams', label='Number of Beams', type='int', default=3, min=1, max=4, step=1 },
@@ -152,6 +185,7 @@ local function _onChar(t, c)
 end
 
 return {
+	nwcut = _nwcut,
 	spec = _spec,
 	draw = _draw,
 	play = _play,
