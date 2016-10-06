@@ -1,4 +1,4 @@
--- Version 1.1
+-- Version 2.0
 
 --[[----------------------------------------------------------------
 This plugin draws a solid, dashed or dotted cubic Bezier slur with adjustable end point positions and curve shape. 
@@ -49,6 +49,7 @@ This will adjust the balance of the right side of the curve. The range of values
 of 0.5 is the default setting.
 --]]----------------------------------------------------------------
 
+local idx = nwc.ntnidx
 local user = nwcdraw.user
 local startNote = nwc.drawpos.new()
 local endNote = nwc.drawpos.new()
@@ -80,45 +81,20 @@ local spec_Slur = {
 	{ id='RightBalance', label='Right B&alance', type='float', default=0.5, min=0, max=1, step=0.05 },
 }
 
-local menu_Slur = {
-	{ type='command', name='Choose Spin Target:', disable=true },
-	{ type='command', name='&Vertical Position', disable=false, separator=true, data={ 5, 7 } }
-}
+local menu_Slur = {}
 
 for k, s in ipairs(spec_Slur) do
-	local a = {	name=s.label, disable=false, data=k }
-	if s.type ~= 'enum' then
-		a.type = 'command'
-		menu_Slur[#menu_Slur+1] = a
-	end
-end
-for k, s in ipairs(spec_Slur) do
-	local a = {	name=s.label, disable=false, data=k }
 	if s.type == 'enum' then
-		a.separator = k == 2
-		a.type = 'choice'
-		a.list = s.list
-		menu_Slur[#menu_Slur+1] = a
+		menu_Slur[#menu_Slur+1] = {	type='choice', name=s.label, list=s.list, data=k }
 	end
 end
-
 
 local function menuInit_Slur(t)
-	local ap = tonumber(t.ap)
 	for k, m in ipairs(menu_Slur) do
-		if m.data then
-			local s = spec_Slur[m.data]
-			if s then
-				local v = t[s.id]
-				if m.type == 'command' then
-					m.checkmark = (k == ap)
-					m.name = string.format('%s\t(%s)', s.label, v)
-				else
-					m.default = v
-				end
-			else
-				m.checkmark = (k == ap)
-			end
+		local s = spec_Slur[m.data]
+		if s then
+			local v = t[s.id]
+			m.default = v
 		end
 	end
 end
@@ -128,8 +104,6 @@ local function menuClick_Slur(t, menu, choice)
 		local m = menu_Slur[menu]
 		local s = spec_Slur[m.data]
 		t[s.id] = m.list[choice]
-	else
-		t.ap = menu
 	end
 end
 
@@ -141,8 +115,8 @@ local function point(t, x1, y1, x2, y2, x3, y3, x4, y4)
 	return value(t, x1, x2, x3, x4), value(t, y1, y2, y3, y4)
 end
 
-local function box(x, y, p1, p2, ap)
-	local m = (ap == p1 or ap == p2) and 'strokeandfill' or 'stroke'
+local function box(x, y, ap, p)
+	local m = (ap == p) and 'strokeandfill' or 'stroke'
 	nwcdraw.setPen('solid', 100)
 	nwcdraw.moveTo(x, y)
 	nwcdraw.beginPath()
@@ -160,7 +134,7 @@ local function noteStuff(item, slurDir)
 		stem = item:stemDir(slurNote)
 		baseNote, dotted = item:durationBase(slurNote), item:isDotted(slurNote)
 	else
-		stem = item:stemDir()
+		stem = item:stemDir() or 1
 		baseNote, dotted = item:durationBase(), item:isDotted()
 		slur = slurDir == 0 and (dirNum[opts:match('Slur=(%a+)')] or -stem) or slurDir 
 	end
@@ -185,10 +159,11 @@ local function draw_Slur(t)
 	local leftBalance, rightBalance = t.LeftBalance*.5, t.RightBalance*.5 + .5
 	local startOffsetX, startOffsetY = t.StartOffsetX, t.StartOffsetY
 	local endOffsetX, endOffsetY = t.EndOffsetX, t.EndOffsetY
-	startNote:find('next', 'noteOrRest')
+	if not startNote:find('next', 'noteOrRest') then return end
 	for i = 1, span do
 		if not endNote:find('next', 'noteOrRest') then break end
 	end
+	if startNote:indexOffset() == endNote:indexOffset() then return end
 	local startStem, slurDir, ya, xo1, startNotehead = noteStuff(startNote, dir)
 	local endStem, _, _, xo2, endNotehead = noteStuff(endNote, slurDir)
 
@@ -245,26 +220,10 @@ local function draw_Slur(t)
 		local ap = tonumber(t.ap)
 		local xb1, yb1 = point(0.05+(0.85*leftBalance), x1, y1, xa1, ya1, xa2, ya2, x2, y2)
 		local xb2, yb2 = point(0.1+(0.85*rightBalance), x1, y1, xa1, ya1, xa2, ya2, x2, y2)
-		box(x1, y1, 4, 5, ap)
-		box(xb1, yb1, 8, 9, ap)
-		box(xb2, yb2, 10, 11, ap)
-		box(x2, y2, 6, 7, ap)
-	end
-end
-
-local function spin_Slur(t, d)
-	t.ap = t.ap or 3 -- default to Span
-	local y = menu_Slur[tonumber(t.ap)].data
-	if type(y) == 'table' then
-		for _, y1 in ipairs(y) do
-			local x = spec_Slur[y1].id
-			t[x] = t[x] + d*spec_Slur[y1].step
-			t[x] = t[x]
-		end
-	else
-		local x = spec_Slur[y].id
-		t[x] = t[x] + d*spec_Slur[y].step
-		t[x] = t[x]
+		box(x1, y1, ap, 1)
+		box(xb1, yb1, ap, 2)
+		box(xb2, yb2, ap, 3)
+		box(x2, y2, ap, 4)
 	end
 end
 
@@ -272,12 +231,98 @@ local function audit_Slur(t)
 	t.ap = nil
 end
 
+local paramTable = {
+	{ 4, 5 }, --Left x, y
+	{ 9, 8 }, --Left Balance, Strength
+	{ 11, 10 }, --Right Balance, Strength
+	{ 6, 7 }, --Right x, y
+}
+
+local function toggleParam(t)
+	local ap = tonumber(t.ap) or #paramTable
+	ap = ap % #paramTable + 1
+	t.ap = ap
+end
+
+local function getSlurDir(t)
+	idx:find('next', 'noteOrRest')
+	local _, slurDir = noteStuff(idx, dirNum[t.Dir])
+	return slurDir
+end
+
+local function adjustParam(t, p, dir)
+	local s = spec_Slur[p]
+	local x = s.id
+	t[x] = t[x] - dir*s.step
+	t[x] = t[x]
+end
+	
+local function updateParam(t, n, dir)
+	if n == 2 then
+		dir = dir * getSlurDir(t)
+	end
+	local ap = tonumber(t.ap)
+	if ap then 
+		adjustParam(t, paramTable[ap][n], dir)
+	end
+end
+
+local function updateEnds(t, dir)
+	dir = dir * getSlurDir(t)
+	adjustParam(t, 5, dir)
+	adjustParam(t, 7, dir)
+end
+
+local skip = { Span=true, Pen=true, Dir=true }
+
+local function defaultParams(t)
+	for k, s in ipairs(spec_Slur) do
+		if not skip[s.id] then t[s.id] = t[s.default] end
+	end
+end
+
+local function defaultCurrentParam(t)
+	local ap = tonumber(t.ap)
+	if ap then
+		for i = 1, 2 do
+			local s = spec_Slur[paramTable[ap][i]]
+			t[s.id] = s.default
+		end
+	end
+end
+
+local charTable = {
+	['8'] = { updateParam, 2, -1 },
+	['6'] = { updateParam, 1, -1 },
+	['4'] = { updateParam, 1, 1 },
+	['2'] = { updateParam, 2, 1 },
+	['9'] = { updateEnds, -1 },
+	['3'] = { updateEnds, 1 },
+	['5'] = { toggleParam },
+	['0'] = { defaultCurrentParam },
+	['Z'] = { defaultParams },
+}
+
+local function onChar_Slur(t, c)
+	local x = string.char(c)
+	local ptr = charTable[x]
+	if not ptr then return false end
+	ptr[1](t, ptr[2], ptr[3])
+	return true
+end
+
+local function spin_Slur(t, dir)
+	t.Span = t.Span + dir
+	t.Span = t.Span
+end
+
 return {
 	spec = spec_Slur,
-	spin = spin_Slur,
 	draw = draw_Slur,
 	menu = menu_Slur,
 	menuInit = menuInit_Slur,
 	menuClick = menuClick_Slur,
 	audit = audit_Slur,
+	spin = spin_Slur,
+	onChar = onChar_Slur,
 }
