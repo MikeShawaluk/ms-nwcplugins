@@ -1,4 +1,4 @@
--- Version 2.0
+-- Version 2.0a
 
 --[[----------------------------------------------------------------
 This plugin draws a solid, dashed or dotted slur with adjustable end point positions and curve shape. 
@@ -44,6 +44,38 @@ This will adjust the left-right balance of the curve. The range of values is -.5
 of 0 is the default (center) balance setting.
 --]]----------------------------------------------------------------
 
+if nwcut then
+	local userObjTypeName = arg[1]
+	nwcut.setlevel(2)
+	local span = 1
+    local save = {}
+    local firstNotePos
+
+	for item in nwcut.items() do
+        save[#save + 1] = item
+		if not item:IsFake() and item:IsNoteRestChord() then
+            firstNotePos = firstNotePos or #save
+            span = span + 1
+        end
+    end
+
+    if span > 1 then
+        local user = nwcItem.new('|User|' .. userObjTypeName)
+	    user:Provide('Span', span)
+        user:Provide('Pos', 0)
+        table.insert(save, firstNotePos, user)
+    else
+        nwcut.msgbox('No notes/rests found in selection')
+        return
+    end
+
+    for _, item in ipairs(save) do
+		nwcut.writeline(item)
+	end
+
+	return
+end
+
 local idx = nwc.ntnidx
 local user = nwcdraw.user
 local startNote = nwc.drawpos.new()
@@ -61,6 +93,10 @@ for _, v in ipairs(dirTable) do
 	dirList[#dirList+1] = v[1]
 	dirNum[v[1]] = v[2]
 end
+
+local _nwcut = {
+	['Add slur'] = 'ClipText',
+}
 
 local _spec = {
 	{ id='Span', label='&Note Span', type='int', default=2, min=2, step=1 },
@@ -304,6 +340,7 @@ local function _onChar(t, c)
 end
 
 return {
+    nwcut = _nwcut,
 	spec = _spec,
 	draw = _draw,
 	menu = _menu,

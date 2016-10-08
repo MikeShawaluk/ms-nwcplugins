@@ -1,4 +1,4 @@
--- Version 2.0
+-- Version 2.0a
 
 --[[----------------------------------------------------------------
 This plugin draws a solid, dashed or dotted cubic Bezier slur with adjustable end point positions and curve shape. 
@@ -49,6 +49,38 @@ This will adjust the balance of the right side of the curve. The range of values
 of 0.5 is the default setting.
 --]]----------------------------------------------------------------
 
+if nwcut then
+	local userObjTypeName = arg[1]
+	nwcut.setlevel(2)
+	local span = 1
+    local save = {}
+    local firstNotePos
+
+	for item in nwcut.items() do
+        save[#save + 1] = item
+		if not item:IsFake() and item:IsNoteRestChord() then
+            firstNotePos = firstNotePos or #save
+            span = span + 1
+        end
+    end
+
+    if span > 1 then
+        local user = nwcItem.new('|User|' .. userObjTypeName)
+	    user:Provide('Span', span)
+        user:Provide('Pos', 0)
+        table.insert(save, firstNotePos, user)
+    else
+        nwcut.msgbox('No notes/rests found in selection')
+        return
+    end
+
+    for _, item in ipairs(save) do
+		nwcut.writeline(item)
+	end
+
+	return
+end
+
 local idx = nwc.ntnidx
 local user = nwcdraw.user
 local startNote = nwc.drawpos.new()
@@ -67,7 +99,11 @@ for _, v in ipairs(dirTable) do
 	dirNum[v[1]] = v[2]
 end
 
-local spec_Slur = {
+local _nwcut = {
+	['Add cubic slur'] = 'ClipText',
+}
+
+local _spec = {
 	{ id='Span', label='&Note Span', type='int', default=2, min=2, step=1 },
 	{ id='Pen', label='&Line Type', type='enum', default='solid', list=nwc.txt.DrawPenStyle },
 	{ id='Dir', label='&Direction', type='enum', default='Default', list=dirList },
@@ -81,17 +117,17 @@ local spec_Slur = {
 	{ id='RightBalance', label='Right B&alance', type='float', default=0.5, min=0, max=1, step=0.05 },
 }
 
-local menu_Slur = {}
+local _menu = {}
 
-for k, s in ipairs(spec_Slur) do
+for k, s in ipairs(_spec) do
 	if s.type == 'enum' then
-		menu_Slur[#menu_Slur+1] = {	type='choice', name=s.label, list=s.list, data=k }
+		_menu[#_menu+1] = {	type='choice', name=s.label, list=s.list, data=k }
 	end
 end
 
-local function menuInit_Slur(t)
-	for k, m in ipairs(menu_Slur) do
-		local s = spec_Slur[m.data]
+local function _menuInit(t)
+	for k, m in ipairs(_menu) do
+		local s = _spec[m.data]
 		if s then
 			local v = t[s.id]
 			m.default = v
@@ -99,10 +135,10 @@ local function menuInit_Slur(t)
 	end
 end
 
-local function menuClick_Slur(t, menu, choice)
+local function _menuClick(t, menu, choice)
 	if choice then
-		local m = menu_Slur[menu]
-		local s = spec_Slur[m.data]
+		local m = _menu[menu]
+		local s = _spec[m.data]
 		t[s.id] = m.list[choice]
 	end
 end
@@ -149,7 +185,7 @@ local function noteStuff(item, slurDir)
 	return stem, slur, arcPitch, noteheadOffset, baseNote
 end
 
-local function draw_Slur(t)
+local function _draw(t)
 	local _, my = nwcdraw.getMicrons()
 	local solidPenWidth, dotDashPenWidth = my*0.12, my*.375
 	local span = t.Span
@@ -227,7 +263,7 @@ local function draw_Slur(t)
 	end
 end
 
-local function audit_Slur(t)
+local function _audit(t)
 	t.ap = nil
 end
 
@@ -251,7 +287,7 @@ local function getSlurDir(t)
 end
 
 local function adjustParam(t, p, dir)
-	local s = spec_Slur[p]
+	local s = _spec[p]
 	local x = s.id
 	t[x] = t[x] - dir*s.step
 	t[x] = t[x]
@@ -276,7 +312,7 @@ end
 local skip = { Span=true, Pen=true, Dir=true }
 
 local function defaultParams(t)
-	for k, s in ipairs(spec_Slur) do
+	for k, s in ipairs(_spec) do
 		if not skip[s.id] then t[s.id] = t[s.default] end
 	end
 end
@@ -285,7 +321,7 @@ local function defaultCurrentParam(t)
 	local ap = tonumber(t.ap)
 	if ap then
 		for i = 1, 2 do
-			local s = spec_Slur[paramTable[ap][i]]
+			local s = _spec[paramTable[ap][i]]
 			t[s.id] = s.default
 		end
 	end
@@ -303,7 +339,7 @@ local charTable = {
 	['Z'] = { defaultParams },
 }
 
-local function onChar_Slur(t, c)
+local function _onChar(t, c)
 	local x = string.char(c)
 	local ptr = charTable[x]
 	if not ptr then return false end
@@ -311,18 +347,19 @@ local function onChar_Slur(t, c)
 	return true
 end
 
-local function spin_Slur(t, dir)
+local function _spin(t, dir)
 	t.Span = t.Span + dir
 	t.Span = t.Span
 end
 
 return {
-	spec = spec_Slur,
-	draw = draw_Slur,
-	menu = menu_Slur,
-	menuInit = menuInit_Slur,
-	menuClick = menuClick_Slur,
-	audit = audit_Slur,
-	spin = spin_Slur,
-	onChar = onChar_Slur,
+    nwcut = _nwcut,
+	spec = _spec,
+	draw = _draw,
+	menu = _menu,
+	menuInit = _menuInit,
+	menuClick = _menuClick,
+	audit = _audit,
+	spin = _spin,
+	onChar = _onChar,
 }
