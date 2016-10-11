@@ -1,4 +1,4 @@
--- Version 2.0a
+-- Version 2.0b
 
 --[[----------------------------------------------------------------
 This plugin draws a solid, dashed or dotted slur with adjustable end point positions and curve shape. 
@@ -48,31 +48,29 @@ if nwcut then
 	local userObjTypeName = arg[1]
 	nwcut.setlevel(2)
 	local span = 1
-    local save = {}
-    local firstNotePos
+	local firstNoteIndex
 
-	for item in nwcut.items() do
-        save[#save + 1] = item
+	local score = nwcut.loadFile()
+
+	local staff = score:getSelection()
+
+	for itemIndex, item in ipairs(staff.Items) do
 		if not item:IsFake() and item:IsNoteRestChord() then
-            firstNotePos = firstNotePos or #save
-            span = span + 1
-        end
-    end
-
-    if span > 1 then
-        local user = nwcItem.new('|User|' .. userObjTypeName)
-	    user:Provide('Span', span)
-        user:Provide('Pos', 0)
-        table.insert(save, firstNotePos, user)
-    else
-        nwcut.msgbox('No notes/rests found in selection')
-        return
-    end
-
-    for _, item in ipairs(save) do
-		nwcut.writeline(item)
+			firstNoteIndex = firstNoteIndex or itemIndex
+			span = span + 1
+		end
 	end
 
+	if span > 1 then
+		local user = nwcItem.new(string.format('|User|%s|Span:%g|Pos:0', userObjTypeName, span))
+		table.insert(staff.Items, firstNoteIndex, user)
+		score.Editor.Opts.SelectIndex = score.Editor.Opts.SelectIndex + 1
+	else
+		nwcut.msgbox('No notes/rests found in selection')
+		return
+	end
+
+	score:save()
 	return
 end
 
@@ -340,7 +338,7 @@ local function _onChar(t, c)
 end
 
 return {
-    nwcut = _nwcut,
+	nwcut = _nwcut,
 	spec = _spec,
 	draw = _draw,
 	menu = _menu,
