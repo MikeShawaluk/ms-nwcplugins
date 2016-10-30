@@ -1,4 +1,4 @@
--- Version 1.3
+-- Version 1.4
 
 --[[----------------------------------------------------------------
 This plugin draws 8va/15ma/22ma (bassa) markings in a score by looking for 
@@ -49,6 +49,12 @@ account for the Instrument Change commands that start and end each marked
 section. For example, a Bb clarinet staff would generally have a staff instrument 
 transpose of -2. Therefore, an 8va section for this instrument would have starting 
 and ending transpose values of 10 and -2.
+@StartOffset
+Horizontal offset for the position of the label text, relative to the first note or rest
+of the 8va section. The range of values is -10.0 to 10.0, and the default value is 0.
+@EndOffset
+Horizontal offset for the position of the ending tail, relative to the last note or rest
+of the 8va section. The range of values is -10.0 to 10.0, and the default value is 0.
 --]]----------------------------------------------------------------
 
 local userObjTypeName = ...
@@ -77,7 +83,9 @@ local spec_Ottavamatic = {
 	{ id='Courtesy', label='Add Courtesy Marks', type='bool', default=true },
 	{ id='IncludeRests', label='Include Rests', type='bool', default=false },
 	{ id='SuppressLine', label='Suppress Line for Short Sections', type='bool', default=false },
-	{ id='StaffTranspose', label='Staff Transpose', type='int', default=0, min=-120, max=120 }
+	{ id='StaffTranspose', label='Staff Transpose', type='int', default=0, min=-120, max=120 },
+	{ id='StartOffset', label='Start Offset', type='float', default=0, min=-10, max=10, step=0.1 },
+	{ id='EndOffset', label='End Offset', type='float', default=0, min=-10, max=10, step=0.1 },
 }
 
 for k, s in ipairs(spec_Ottavamatic) do
@@ -124,10 +132,10 @@ local function find8vaEdge(idx, dir, t)
 	local trans = (tonumber(idx:objProp('Trans')) or 0) - t.StaffTranspose
 	return transposeLookup[trans] or 0
 end
- 
+
 local function drawShift(drawpos1, drawpos2, extendingSection, endOfSection, shiftDir, y, t)
-	local x1 = drawpos1:xyAnchor()
-	local x2 = endOfSection and drawpos2:xyRight()+.5 or drawpos2:xyAnchor()
+	local x1 = drawpos1:xyAnchor()+t.StartOffset
+	local x2 = endOfSection and drawpos2:xyRight()+.5+t.EndOffset or drawpos2:xyAnchor() 
 	local tail = shiftDir > 0 and 2 or -2
 	local label = t[labelTextLookup[shiftDir]] or ''
 	local addParens = extendingSection and t.Courtesy
@@ -167,7 +175,7 @@ local function draw_Ottavamatic(t)
 	local w = nwc.toolbox.drawStaffSigLabel(userObjSigName)
 	if not nwcdraw.isDrawing() then return w end
 	if user:isHidden() then return end
-	
+
 	local _, my = nwcdraw.getMicrons()
 	local penWidth = my*.315
 	local drawpos = nwc.drawpos
@@ -213,7 +221,7 @@ local function transpose_Ottavamatic(t, semitones, notepos, updpatch)
 		t.StaffTranspose = t.StaffTranspose - semitones
 	end
 end
- 
+
 return {
 	spec = spec_Ottavamatic,
 	create = create_Ottavamatic,
