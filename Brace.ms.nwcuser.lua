@@ -1,22 +1,24 @@
--- Version 1.0
+-- Version 1.1
 
 --[[----------------------------------------------------------------
-This will draw a brace of configurable size, weight and direction. This can be useful for lyrics and other purposes.
+This will draw various character shapes of configurable size, weight and direction. They can be useful for lyrics and other purposes.
 @Height
-The height of the brace, in units of staff position. This is a value from 0 to 100.0, and the default setting is 10.
+The height of the shape, in units of staff position. This is a value from 0 to 100.0, and the default setting is 10.
 @Width
-The width of the brace, in units of notehead width. This is a value from 0 to 5.0, and the default setting is 1.
+The width of the shape, in units of notehead width. This is a value from 0 to 5.0, and the default setting is 1.
 @Offset
-This will adjust the horizontal position of the brace, in units of notehead width. The range of values is -100.0 to 100.0, and the default setting is 0.
+This will adjust the horizontal position of the shape, in units of notehead width. The range of values is -100.0 to 100.0, and the default setting is 0.
 @Weight
-The relative line weight (thickness) of the brace. The range of values is 0.1 to 5.0, and the default setting is 1.
+The relative line weight (thickness) of the shape. The range of values is 0.1 to 5.0, and the default setting is 1.
 @Direction
-The direction of the brace: Left or Right. The default setting is Right.
+The direction of the shape: Left or Right. The default setting is Right.
+@Shape
+The character shape to be drawn, Brace or Bracket. The default is Brace.
 --]]----------------------------------------------------------------
 
-local x1, y1, x2, y2, x3, y3 = -.75, 1.5, .25, 4, -.5, 5
 local dirList = { 'Right', 'Left'}
 local dirMult = { Right=1, Left=-1 }
+local shapeList = { 'Brace', 'Bracket' }
 
 local _spec = {
     { id='Height', label='&Height', type='float', step=0.5, min=0, max=100, default=10 },
@@ -24,6 +26,7 @@ local _spec = {
 	{ id='Offset', label='&Offset', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='Weight', label='&Line Weight', type='float', step=0.1, min=0, max=5, default=1 },
 	{ id='Direction', label='&Direction', type='enum', default=dirList[1], list=dirList },
+	{ id='Shape', label='&Shape', type='enum', default=shapeList[1], list=shapeList },
 }
 
 local _menu = {
@@ -78,24 +81,48 @@ local function _menuClick(t, menu, choice)
 	end
 end
 
-local function segment(xa, ya, xb, yb, xc, yc, h, w, o)
+local function bezSegment(xa, ya, xb, yb, xc, yc, h, w, o)
 	nwcdraw.bezier(xa*w+o, ya*h, xb*w+o, yb*h, xc*w+o, yc*h)
 end
 
+local function drawCurlyBrace(t)
+	local x1, y1, x2, y2, x3, y3 = -.75, 1.5, .25, 4, -.5, 5
+	local h, w, o = t.Height*.1, t.Width*dirMult[t.Direction], t.Offset
+	local xo = t.Weight*.2
+	nwcdraw.beginPath()
+	nwcdraw.moveTo(x3*w+o, y3*h)
+	bezSegment(x2, y2, x1, y1, 0, 0, h, w, o)
+	bezSegment(x1, -y1, x2, -y2, x3, -y3, h, w, o)
+	bezSegment(x2+xo, -y2, x1+xo, -y1, 0, 0, h, w, o)
+	bezSegment(x1+xo, y1, x2+xo, y2, x3, y3, h, w, o)
+	nwcdraw.endPath()
+end
+
+local function drawSquareBracket(t)
+	local h, w, o = t.Height*.5, t.Width*dirMult[t.Direction], t.Offset
+	local xo = t.Weight*.07*dirMult[t.Direction]
+	local yo = t.Weight*.07*nwcdraw.getAspectRatio()
+	local x1 = w*.4
+	nwcdraw.beginPath()
+	nwcdraw.moveTo(o+xo)
+	nwcdraw.line(o+xo, h+yo)
+	nwcdraw.line(o-xo-x1, h+yo)
+	nwcdraw.line(o-xo-x1, h-yo)
+	nwcdraw.line(o-xo, h-yo)
+	nwcdraw.line(o-xo, -h+yo)
+	nwcdraw.line(o-xo-x1, -h+yo)
+	nwcdraw.line(o-xo-x1, -h-yo)
+	nwcdraw.line(o+xo, -h-yo)
+	nwcdraw.endPath()
+end
+
+local shapeFunctions = { Brace = drawCurlyBrace, Bracket = drawSquareBracket }
+
 local function _draw(t)
-	local dir = dirMult[t.Direction]
-	local height, width, offset = t.Height*0.1, t.Width*dir, t.Offset
-	local xo = t.Weight * .2
 	local _, my = nwcdraw.getMicrons()
 	local penWidth = my*0.12
 	nwcdraw.setPen('solid', penWidth)
-	nwcdraw.beginPath()
-	nwcdraw.moveTo(x3*width+offset, y3*height)
-	segment(x2, y2, x1, y1, 0, 0, height, width, offset)
-	segment(x1, -y1, x2, -y2, x3, -y3, height, width, offset)
-	segment(x2+xo, -y2, x1+xo, -y1, 0, 0, height, width, offset)
-	segment(x1+xo, y1, x2+xo, y2, x3, y3, height, width, offset)
-	nwcdraw.endPath()
+	shapeFunctions[t.Shape](t)
 end
 
 local function _spin(t, d)
@@ -108,9 +135,9 @@ local function _spin(t, d)
 			t[x] = t[x]
 		end
 	else
-	local x = _spec[y].id
-	t[x] = t[x] + d*_spec[y].step
-	t[x] = t[x]
+		local x = _spec[y].id
+		t[x] = t[x] + d*_spec[y].step
+		t[x] = t[x]
 	end
 end
 
