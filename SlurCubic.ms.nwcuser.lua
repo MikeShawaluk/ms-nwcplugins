@@ -1,4 +1,4 @@
--- Version 2.0b
+-- Version 2.0
 
 --[[----------------------------------------------------------------
 This plugin draws a solid, dashed or dotted cubic Bezier slur with adjustable end point positions and curve shape. 
@@ -51,31 +51,34 @@ of 0.5 is the default setting.
 
 if nwcut then
 	local userObjTypeName = arg[1]
-	nwcut.setlevel(2)
-	local span = 1
-	local firstNoteIndex
+	local span = 0
 
 	local score = nwcut.loadFile()
-
-	local staff = score:getSelection()
-
-	for itemIndex, item in ipairs(staff.Items) do
-		if not item:IsFake() and item:IsNoteRestChord() then
-			firstNoteIndex = firstNoteIndex or itemIndex
+	
+	local function calculateSpan(o)
+		if not o:IsFake() and o:IsNoteRestChord() then
 			span = span + 1
 		end
 	end
-
-	if span > 1 then
-		local user = nwcItem.new(string.format('|User|%s|Span:%g|Pos:0', userObjTypeName, span))
-		table.insert(staff.Items, firstNoteIndex, user)
-		score.Editor.Opts.SelectIndex = score.Editor.Opts.SelectIndex + 1
+	
+	local function addSlur(o)
+		if span and not o:IsFake() then
+			local o2 = nwcItem.new('|User|'..userObjTypeName)
+			o2.Opts.Pos = 0
+			o2.Opts.Span = span + 1
+			span = false
+			return { o2, o }
+		end
+	end
+	
+	score:forSelection(calculateSpan)
+	if span > 0 then
+		score:forSelection(addSlur)
+		score:save()
 	else
 		nwcut.msgbox('No notes/rests found in selection')
-		return
 	end
 
-	score:save()
 	return
 end
 
@@ -115,9 +118,11 @@ local _spec = {
 	{ id='RightBalance', label='Right B&alance', type='float', default=0.5, min=0, max=1, step=0.05 },
 }
 
+local _spec2 = {}
 local _menu = {}
 
 for k, s in ipairs(_spec) do
+	_spec2[s.id] = k
 	if s.type == 'enum' then
 		_menu[#_menu+1] = {	type='choice', name=s.label, list=s.list, data=k }
 	end
@@ -266,10 +271,10 @@ local function _audit(t)
 end
 
 local paramTable = {
-	{ 4, 5 }, --Left x, y
-	{ 9, 8 }, --Left Balance, Strength
-	{ 11, 10 }, --Right Balance, Strength
-	{ 6, 7 }, --Right x, y
+	{ _spec2.StartOffsetX, _spec2.StartOffsetY },
+	{ _spec2.LeftBalance, _spec2.LeftStrength },
+	{ _spec2.RightBalance, _spec2.RightStrength },
+	{ _spec2.EndOffsetX, _spec2.EndOffsetY },
 }
 
 local function toggleParam(t)
@@ -284,27 +289,27 @@ local function getSlurDir(t)
 	return slurDir
 end
 
-local function adjustParam(t, p, dir)
+local function updateParam(t, p, dir)
 	local s = _spec[p]
 	local x = s.id
-	t[x] = t[x] - dir*s.step
+	t[x] = t[x] + dir*s.step
 	t[x] = t[x]
 end
 	
-local function updateParam(t, n, dir)
+local function updateActiveParam(t, n, dir)
 	if n == 2 then
 		dir = dir * getSlurDir(t)
 	end
 	local ap = tonumber(t.ap)
 	if ap then 
-		adjustParam(t, paramTable[ap][n], dir)
+		updateParam(t, paramTable[ap][n], dir)
 	end
 end
 
 local function updateEnds(t, dir)
 	dir = dir * getSlurDir(t)
-	adjustParam(t, 5, dir)
-	adjustParam(t, 7, dir)
+	updateParam(t, _spec2.StartOffsetY, dir)
+	updateParam(t, _spec2.EndOffsetY, dir)
 end
 
 local skip = { Span=true, Pen=true, Dir=true }
@@ -326,12 +331,14 @@ local function defaultCurrentParam(t)
 end
 
 local charTable = {
-	['8'] = { updateParam, 2, -1 },
-	['6'] = { updateParam, 1, -1 },
-	['4'] = { updateParam, 1, 1 },
-	['2'] = { updateParam, 2, 1 },
-	['9'] = { updateEnds, -1 },
-	['3'] = { updateEnds, 1 },
+	['+'] = { updateParam, _spec2.Span, 1 },
+	['-'] = { updateParam, _spec2.Span, -1 },
+	['8'] = { updateActiveParam, 2, 1 },
+	['6'] = { updateActiveParam, 1, 1 },
+	['4'] = { updateActiveParam, 1, -1 },
+	['2'] = { updateActiveParam, 2, -1 },
+	['9'] = { updateEnds, 1 },
+	['3'] = { updateEnds, -1 },
 	['5'] = { toggleParam },
 	['0'] = { defaultCurrentParam },
 	['Z'] = { defaultParams },
@@ -345,11 +352,6 @@ local function _onChar(t, c)
 	return true
 end
 
-local function _spin(t, dir)
-	t.Span = t.Span + dir
-	t.Span = t.Span
-end
-
 return {
 	nwcut = _nwcut,
 	spec = _spec,
@@ -358,6 +360,5 @@ return {
 	menuInit = _menuInit,
 	menuClick = _menuClick,
 	audit = _audit,
-	spin = _spin,
 	onChar = _onChar,
 }

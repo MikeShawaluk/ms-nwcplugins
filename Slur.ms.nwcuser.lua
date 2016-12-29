@@ -1,4 +1,4 @@
--- Version 2.0b
+-- Version 2.0
 
 --[[----------------------------------------------------------------
 This plugin draws a solid, dashed or dotted slur with adjustable end point positions and curve shape. 
@@ -46,31 +46,34 @@ of 0 is the default (center) balance setting.
 
 if nwcut then
 	local userObjTypeName = arg[1]
-	nwcut.setlevel(2)
-	local span = 1
-	local firstNoteIndex
+	local span = 0
 
 	local score = nwcut.loadFile()
-
-	local staff = score:getSelection()
-
-	for itemIndex, item in ipairs(staff.Items) do
-		if not item:IsFake() and item:IsNoteRestChord() then
-			firstNoteIndex = firstNoteIndex or itemIndex
+	
+	local function calculateSpan(o)
+		if not o:IsFake() and o:IsNoteRestChord() then
 			span = span + 1
 		end
 	end
-
-	if span > 1 then
-		local user = nwcItem.new(string.format('|User|%s|Span:%g|Pos:0', userObjTypeName, span))
-		table.insert(staff.Items, firstNoteIndex, user)
-		score.Editor.Opts.SelectIndex = score.Editor.Opts.SelectIndex + 1
+	
+	local function addSlur(o)
+		if span and not o:IsFake() then
+			local o2 = nwcItem.new('|User|'..userObjTypeName)
+			o2.Opts.Pos = 0
+			o2.Opts.Span = span + 1
+			span = false
+			return { o2, o }
+		end
+	end
+	
+	score:forSelection(calculateSpan)
+	if span > 0 then
+		score:forSelection(addSlur)
+		score:save()
 	else
 		nwcut.msgbox('No notes/rests found in selection')
-		return
 	end
 
-	score:save()
 	return
 end
 

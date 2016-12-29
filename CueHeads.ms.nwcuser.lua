@@ -17,6 +17,7 @@ local userObjSigName = nwc.toolbox.genSigName(userObjTypeName)
 local drawpos = nwcdraw.user
 local nextObj = nwc.ntnidx.new()
 local noteHeadChar = { Whole='i', Half='j', Other='k' }
+local blankNoteHead = string.byte('z')
 
 local _spec = {
     { id='Size', label='Notehead Size (%)', type='int', min=50, max=90, step=10, default=70 },
@@ -40,7 +41,7 @@ local function _draw(t)
 		if found and drawpos < nextObj then
 			for i = 1, drawpos:noteCount() do
 				x, y, noteHead = drawpos:xyNoteHead(i)
-				if noteHead == string.byte('z') then
+				if noteHead == blankNoteHead then
 					x1 = drawpos:xyStemAnchor(drawpos:stemDir(i))
 					nwcdraw.alignText('baseline', x1-x < .5 and 'left' or 'right')
 					nwcdraw.moveTo(x1, y)
@@ -57,7 +58,7 @@ local function _create(t)
 end
 
 local function _spin(t, dir)
-	t.Size = t.Size + dir*10
+	t.Size = t.Size + dir * _spec[1].step
 	t.Size = t.Size
 end
 

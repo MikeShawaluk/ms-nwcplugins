@@ -1,4 +1,4 @@
--- Version 2.0a
+-- Version 2.0
 
 --[[----------------------------------------------------------------
 This object creates a single note tremolo marking. It draws the markings, and will optionally play the note in tremolo style.
@@ -40,33 +40,33 @@ The range of values is 50% to 200%, and the default setting is 100% (no variance
 
 if nwcut then
 	local userObjTypeName = arg[1]
-	nwcut.setlevel(2)
-	local addCount = 0
-	local beams = nwcut.prompt('Number of Beams:', '#[1,4]', 3)
+	local score = nwcut.loadFile()
+	local beams = nwcut.prompt('Number of Beams:', '#[0,4]', 3)
 	
-	local function plural(value)
-		return value == 0 and 'No' or tostring(value), value == 1 and '' or 's'
-	end
-	
-	for item in nwcut.items() do
-		if item:IsFake() then
-			-- don't process these
-		elseif item:ContainsNotes() then
-			item:Provide('Opts').Muted = ''
-			local user = nwcItem.new('|User|' .. userObjTypeName)
-			user:Provide('Beams', beams)
-			user:Provide('Pos', 0)
-			nwcut.writeline(user)
-			addCount = addCount + 1
-		end
-		if not (item:Is('User') and item.UserType == userObjTypeName) then -- exclude existing TremoloSingle.ms objects in clip
-			nwcut.writeline(item)
+	local function applyTremolo(o)
+		if o:IsFake() then return end
+		
+		if o.UserType == userObjTypeName then
+			return 'delete'
+		elseif o:ContainsNotes() then
+			local opts = o:Provide('Opts')
+			if beams > 0 then
+				local o2 = nwcItem.new('|User|' .. userObjTypeName)
+				o2.Opts.Pos = 0
+				o2.Opts.Beams = beams
+				opts.Muted = ''
+				return { o2, o }
+			else
+				opts.Muted = nil
+			end
 		end
 	end
-	nwcut.msgbox(string.format('%s tremolo%s will be added.', plural(addCount)))
+	
+	score:forSelection(applyTremolo)
+	score:save()
 	return
 end
-
+	
 local idx = nwc.ntnidx
 local user = nwcdraw.user
 local durations = { Eighth=1, Sixteenth=2, Thirtysecond=3, Sixtyfourth=4 }
@@ -74,7 +74,7 @@ local whichList = { 'top', 'bottom' }
 local whichStemDirList = { top=1, bottom=-1}
 
 local _nwcut = {
-	['Create Single Tremolo'] = 'ClipText',
+	['Apply'] = 'ClipText',
 }
 
 local _spec = {
