@@ -1,4 +1,4 @@
--- Version 1.2
+-- Version 2.0
 
 --[[----------------------------------------------------------------
 This plugin draw a guitar chord chart and optionally strums the chord when the song is played. 
@@ -61,6 +61,182 @@ played note occurs on the chord's beat position. When unchecked, the first playe
 strummed chord is at the chord's beat position. The default setting is on (checked).
 --]]----------------------------------------------------------------
 
+local commonChords = {
+	['(Custom)'] = { '', '', 1 },
+	
+	['A'] = { 'x o 2 2 2 o', '', 1 },
+	['Am'] = { 'x o 2 2 1 o', '', 1 },
+	['A6'] = { 'x o 2 2 2 2', '', 1 },
+	['A7'] = { 'x o 2 2 2 3', '', 1 },
+	['A9'] = { 'x o 2 4 2 3', '', 1 },
+	['Am6'] = { 'x o 2 2 1 2', '', 1 },
+	['Am7'] = { 'x o 2 2 1 3', '', 1 },
+	['Amaj7'] = { 'x o 2 1 2 o', '', 1 },
+	['Adim'] = { 'x x 1 2 1 2', '', 1 },
+	['A+'] = { 'x o 3 2 2 1', '', 1 },
+	['Asus'] = { 'x o 2 2 3 o', '', 1 },
+	
+	['A#'] = { 'x 1 3 3 3 1', '', 1 },
+	['A#m'] = { 'x 1 3 3 2 1', '', 1 },
+	['A#6'] = { '1 1 3 3 3 3', '', 1 },
+	['A#7'] = { 'x x 3 3 3 4', '', 3 },
+	['A#9'] = { '3 3 5 3 3 3', '', 3 },
+	['A#m6'] = { 'x x 3 3 2 3', '', 1 },
+	['A#m7'] = { 'x x 3 3 2 4', '', 1 },
+	['A#maj7'] = { 'x 1 3 2 3 x', '', 1 },
+	['A#dim'] = { 'x x 2 3 2 3', '', 1 },
+	['A#+'] = { 'x x o 3 3 2', '', 1 },
+	['A#sus'] = { 'x x 3 3 4 1', '', 1 },
+	
+	['B'] = { 'x 2 4 4 4 2', '', 1 },
+	['Bm'] = { 'x 2 4 4 3 2', '', 1 },
+	['B6'] = { '2 2 4 4 4 4', '', 1 },
+	['B7'] = { 'x 2 1 2 o 2', '', 1 },
+	['B9'] = { 'x 2 1 2 2 2', '', 1 },
+	['Bm6'] = { 'x x 4 4 3 4', '', 1 },
+	['Bm7'] = { 'x 2 4 2 3 2', '', 2 },
+	['Bmaj7'] = { 'x 2 4 3 4 x', '', 1 },
+	['Bdim'] = { 'x x o 1 o 1', '', 1 },
+	['B+'] = { 'x x 5 4 4 3', '', 3 },
+	['Bsus'] = { 'x x 4 4 5 2', '', 2 },
+	
+	['C'] = { '3 3 2 o 1 o', '', 1 },
+	['Cm'] = { 'x 3 5 5 4 3', '', 3 },
+	['C6'] = { 'x x 2 2 1 3', '', 1 },
+	['C7'] = { 'x 3 2 3 1 o', '', 1 },
+	['C9'] = { 'x 3 2 3 3 3', '', 1 },
+	['Cm6'] = { 'x x 1 2 1 3', '', 1 },
+	['Cm7'] = { 'x x 1 3 1 3', '', 1 },
+	['Cmaj7'] = { 'x 3 2 o o o', '', 1 },
+	['Cdim'] = { 'x x 1 2 1 2', '', 1 },
+	['C+'] = { 'x x 2 1 1 o', '', 1 },
+	['Csus'] = { 'x x 3 o 1 3', '', 1 },
+	
+	['C#'] = { 'x x 3 1 2 1', '', 1 },
+	['C#m'] = { 'x x 2 1 2 o', '', 1 },
+	['C#6'] = { 'x x 3 3 2 4', '', 1 },
+	['C#7'] = { 'x x 3 4 2 4', '', 1 },
+	['C#9'] = { 'x 4 3 4 4 4', '', 1 },
+	['C#m6'] = { 'x x 2 3 2 4', '', 1 },
+	['C#m7'] = { 'x x 2 4 2 4', '', 1 },
+	['C#maj7'] = { 'x 4 3 1 1 1', '', 1 },
+	['C#dim'] = { 'x x 2 3 2 3', '', 1 },
+	['C#+'] = { 'x x 3 2 2 1', '', 1 },
+	['C#sus'] = { 'x x 3 3 4 1', '', 1 },
+	
+	['D'] = { 'x x o 2 3 2', '', 1 },
+	['Dm'] = { 'x x o 2 3 1', '', 1 },
+	['D6'] = { 'x o o 2 o 2', '', 1 },
+	['D7'] = { 'x x o 2 1 2', '', 1 },
+	['D9'] = { '2 o o 2 1 o', '', 1 },
+	['Dm6'] = { 'x x o 2 o 1', '', 1 },
+	['Dm7'] = { 'x x o 2 1 1', '', 1 },
+	['Dmaj7'] = { 'x x o 2 2 2', '', 1 },
+	['Ddim'] = { 'x x o 1 o 1', '', 1 },
+	['D+'] = { 'x x o 3 3 2', '', 1 },
+	['Dsus'] = { 'x x o 2 3 3', '', 1 },
+	
+	['D#'] = { 'x x 5 3 4 3', '', 3 },
+	['D#m'] = { 'x x 4 3 4 2', '', 1 },
+	['D#6'] = { 'x x 1 3 1 3', '', 1 },
+	['D#7'] = { 'x x 1 3 2 3', '', 1 },
+	['D#9'] = { '1 1 1 3 2 1', '', 1 },
+	['D#m6'] = { 'x x 1 3 1 2', '', 1 },
+	['D#m7'] = { 'x x 1 3 2 2', '', 1 },
+	['D#maj7'] = { 'x x 1 3 3 3', '', 1 },
+	['D#dim'] = { 'x x 1 2 1 2', '', 1 },
+	['D#+'] = { 'x x 1 o o 3', '', 1 },
+	['D#sus'] = { 'x x 1 3 4 4', '', 1 },
+
+	['E'] = { 'o 2 2 1 o o', '', 1 },
+	['Em'] = { 'o 2 2 o o o', '', 1 },
+	['E6'] = { 'o 2 2 1 2 o', '', 1 },
+	['E7'] = { 'o 2 2 1 3 o', '', 1 },
+	['E9'] = { 'o 2 o 1 o 2', '', 1 },
+	['Em6'] = { 'o 2 2 o 2 o', '', 1 },
+	['Em7'] = { 'o 2 o o o o', '', 1 },
+	['Emaj7'] = { 'o 2 1 1 o o', '', 1 },
+	['Edim'] = { 'x x 2 3 2 3', '', 1 },
+	['E+'] = { 'x x 2 1 1 o', '', 1 },
+	['Esus'] = { 'o 2 2 2 o o', '', 1 },
+	
+	['F'] = { '1 3 3 2 1 1', '', 1 },
+	['Fm'] = { '1 3 3 1 1 1', '', 1 },
+	['F6'] = { 'x x o 2 1 1', '', 1 },
+	['F7'] = { '1 3 1 2 1 1', '', 1 },
+	['F9'] = { 'x x 3 2 4 3', '', 1 },
+	['Fm6'] = { 'x x o 1 1 1', '', 1 },
+	['Fm7'] = { '1 3 1 1 1 1', '', 1 },
+	['Fmaj7'] = { 'x x 3 2 1 o', '', 1 },
+	['Fdim'] = { 'x x o 1 o 1', '', 1 },
+	['F+'] = { 'x x 3 2 2 1', '', 1 },
+	['Fsus'] = { 'x x 3 3 1 1', '', 1 },
+	
+	['F#'] = { '2 4 4 3 2 2', '', 1 },
+	['F#m'] = { '2 4 4 2 2 2', '', 1 },
+	['F#6'] = { 'x 4 4 3 4 x', '', 1 },
+	['F#7'] = { 'x x 4 3 2 o', '', 1 },
+	['F#9'] = { 'x x 4 3 5 4', '', 3 },
+	['F#m6'] = { 'x x 1 2 2 2', '', 1 },
+	['F#m7'] = { 'x x 2 2 2 2', '', 1 },
+	['F#maj7'] = { 'x x 4 3 2 1', '', 1 },
+	['F#dim'] = { 'x x 1 2 1 2', '', 1 },
+	['F#+'] = { 'x x 4 3 3 2', '', 1 },
+	['F#sus'] = { 'x x 4 4 2 2', '', 1 },
+	
+	['G'] = { '3 2 o o o 3', '', 1 },
+	['Gm'] = { '3 5 5 3 3 3', '', 3},
+	['G6'] = { '3 2 o o o o', '', 1 },
+	['G7'] = { '3 2 o o o 1', '', 1 },
+	['G9'] = { '3 o o 2 o 1', '', 1 },
+	['Gm6'] = { 'x x 2 3 3 3', '', 1 },
+	['Gm7'] = { '3 5 3 3 3 3', '', 3 },
+	['Gmaj7'] = { 'x x 5 4 3 2', '', 2 },
+	['Gdim'] = { 'x x 2 3 2 3', '', 1 },
+	['G+'] = { 'x x 1 o o 3', '', 1 },
+	['Gsus'] = { 'x x o o 1 3', '', 1 },
+	
+	['G#'] = { '4 6 6 5 4 4', '', 4 },
+	['G#m'] = { '4 6 6 4 4 4', '', 4 },
+	['G#6'] = { '4 3 1 1 1 1', '', 1 },
+	['G#7'] = { 'x x 1 1 1 2', '', 1 },
+	['G#9'] = { 'x x 1 3 1 2', '', 1 },
+	['G#m6'] = { 'x x x 4 4 4', '', 1 },
+	['G#m7'] = { 'x x 1 1 o 2', '', 1 },
+	['G#maj7'] = { 'x x 1 1 1 3', '', 1 },
+	['G#dim'] = { 'x x o 1 o 1', '', 1 },
+	['G#+'] = { 'x x 2 1 1 o', '', 1 },
+	['G#sus'] = { 'x x 1 1 2 4', '', 1 },
+}
+
+--if nwcut then
+--	local userObjTypeName = arg[1]
+--	local score = nwcut.loadFile()
+--	local staff, i1, i2 = score:getSelection()
+	
+--	for k2,v2 in ipairs( {'','m','6','7','9','m6','m7','maj7','dim','+','sus'} ) do	
+--		for k1,v1 in ipairs( {'C','C#','D','D#','E','F','F#','G','G#','A','A#','B'} ) do
+--			local chord = v1 .. v2
+--			local o = nwcItem.new('User|' .. userObjTypeName)
+--			o.Opts.Name = chord
+--			o.Opts.Finger = commonChords[chord][1]
+--			o.Opts.Barre = commonChords[chord][2]
+--			o.Opts.TopFret = commonChords[chord][3]
+--			o.Opts.Span = 1
+--			o.Opts.Pos = 5
+--			o.Opts.Size = 2
+--			o.Opts.Anticipated = false
+--			staff:add(o)
+--			staff:add(nwcItem.new('|Rest|Dur:Half'))
+--			staff:add(nwcItem.new('|Bar'))
+--		end
+--	end
+	
+--	score:setSelection(staff)
+--	score:save()
+--	return		
+--end
+
 local userObjTypeName = ...
 local idx = nwc.ntnidx
 local user = nwcdraw.user
@@ -90,7 +266,7 @@ local _spec = {
 	{ id='Span', label='Note Span', type='int', default=0, min=0 },
 	{ id='FretTextPosition', label='Fret Text Location', type='enum', default='top', list=fretTextPos },
 	{ id='Strum', label='Strum Direction', type='enum', default='down', list=strumStyles },
-	{ id='TopBarreOffset', label='Top Barre Offset', type='float', default=0, min=0, step=.5 },
+	{ id='TopBarreOffset', label='Top Barre Offset', type='float', default=0, min=0, step=.25 },
 	{ id='Anticipated', label='Anticipated Playback', type='bool', default=true },
 }
 
@@ -176,55 +352,19 @@ local function _menuClick(t, menu, choice)
 	end
 end
 
-local commonChords = {
-	['(Custom)'] = { '', '', 1 },
-	['C'] = { 'x 3 2 o 1 o', '', 1 },
-	['D'] = { 'x x o 2 3 2', '', 1 },
-	['E'] = { 'o 2 2 1 o o', '', 1 },
-	['F'] = { 'x x 3 2 1 1', '5:6', 1 },
-	['G'] = { '3 2 o o o 3', '', 1 },
-	['A'] = { 'x o 2 2 2 o', '', 1 },
-	['B'] = { '2 2 4 4 4 2', '1:6', 1 },
-	['Cm'] = { 'x x 5 5 4 3', '', 2 },
-	['Dm'] = { 'x o o 2 3 1', '', 1 },
-	['Em'] = { 'o 2 2 o o o', '', 1 },
-	['Fm'] = { '1 3 3 1 1 1', '1:6', 1 },
-	['Gm'] = { '3 5 5 3 3 3', '1:6', 2 },
-	['Am'] = { 'x o 2 2 1 o', '', 1 },
-	['Bm'] = { '2 2 4 4 3 2', '1:6', 1 },
-	['C7'] = { 'x 3 2 3 1 o', '', 1 },
-	['D7'] = { 'x o o 2 1 2', '', 1 },
-	['E7'] = { 'o 2 o 1 o o', '', 1 },
-	['F7'] = { 'x 3 3 5 4 5', '2:3', 2 },
-	['G7'] = { '3 2 o o o 1', '', 1 },
-	['A7'] = { 'x o 2 o 2 o', '', 1 },
-	['B7'] = { 'x 2 1 2 o 2', '', 1 },
-	['Cmaj7'] = { 'o 3 2 o o o', '', 1 },
-	['Dmaj7'] = { 'x x o 2 2 2', '', 1 },
-	['Emaj7'] = { 'o 2 1 1 o o', '', 1 },
-	['Fmaj7'] = { 'x x 3 2 1 o', '', 1 },
-	['Gmaj7'] = { '3 2 o o o 2', '', 1 },
-	['Amaj7'] = { 'x o 2 1 2 o', '', 1 },
-	['Bmaj7'] = { 'x 2 4 3 4 2', '2:6', 1 },
-	['Cm7'] = { 'x 3 5 3 4 3', '2:6', 2 },
-	['Dm7'] = { 'x x o 2 1 1', '5:6', 1 },
-	['Em7'] = { 'o 2 2 o 3 o', '', 1 },
-	['Fm7'] = { '1 3 3 1 4 1', '1:6', 1 },
-	['Gm7'] = { '3 5 5 3 6 3', '1:6', 3 },
-	['Am7'] = { 'x o 2 o 1 o', '', 1 },
-	['Bm7'] = { 'x 2 4 2 3 2', '2:6', 1 }
-}
-
-local chordNames = {}
-for k, _ in pairs(commonChords) do
-	table.insert(chordNames, k)
-end
-table.sort(chordNames)
-
 local function _create(t)
-	local chord = nwcui.prompt('Select a Chord','|' .. table.concat(chordNames,'|'))
+	local chord
+	local tonic = nwcui.prompt('Select Tonic', '|(Custom)|C|C#|Db|D|D#|Eb|E|F|F#|Gb|G|G#|Ab|A|A#|Bb|B')
+	if not tonic then return end
+	if tonic ~= '(Custom)' then
+		chord = nwcui.prompt('Select Chord', string.gsub('|@|@m|@6|@7|@9|@m6|@m7|@maj7|@dim|@+|@sus', '@', tonic))
+	end
 	if not chord then return end
-	t.Name = (chord == '(Custom)') and '' or chord
+	t.Name = (tonic == '(Custom)') and '' or chord
+	if not commonChords[chord] then
+		local f2s = { Ab='G#', Bb='A#', Db='C#', Eb='D#', Gb='F#' }
+		chord = string.gsub(chord, tonic, f2s[tonic])
+	end
 	t.Finger = commonChords[chord][1]
 	t.Barre = commonChords[chord][2]
 	t.TopFret = commonChords[chord][3]
@@ -260,10 +400,12 @@ local function _spin(t, d)
 		else
 			local f = parseStrings(t.Finger)
 			local s = f[-y]
-			if s then
-				local n = tonumber(s) or s=='x' and -1 or 0
+			local s1 = s:match('(%S)')
+			local s2 = s:match(':(%S)')
+			if s1 then
+				local n = tonumber(s1) or s1=='x' and -1 or 0
 				n = math.max(-1, n + d)
-				f[-y] = n > 0 and tostring(n) or lu[n]
+				f[-y] = n > 0 and tostring(n) .. (s2 and ':' .. s2 or '') or lu[n]
 				t.Finger = table.concat(f, ' ')
 			end
 		end
@@ -290,7 +432,7 @@ local function _draw(t)
 	local ap = tonumber(t.ap or 0)
 	local penStyle = 'solid'
 	local lineThickness = my*0.125*size
-	local barreThickness = my*0.1*size
+	local barreThickness = my*0.05*size
 	local xspace, yspace = size / xyar, size
 	local height = yspace * frets
 	local height2 = (topFret == 1) and height + .5 * yspace or height
@@ -346,6 +488,7 @@ local function _draw(t)
 			highFret = math.max(fretPos, highFret)
 			local y = yspace * (frets - fretPos + topFret - .5)
 			if y > 0 and y < height then
+				nwcdraw.setPen(penStyle, lineThickness)
 				nwcdraw.moveTo(x, y)
 				nwcdraw.beginPath()
 				nwcdraw.ellipse(dotXSize)
@@ -361,7 +504,7 @@ local function _draw(t)
 					local b1, b2 = b:match('(%d):(%d)')
 					b1, b2 = tonumber(b1), tonumber(b2)
 					if b1 and b2 and b1 == stringNum and b1 < b2 and b2 <= strings then
-						local y1 = (fretPos == 1) and height2 + .25 * yspace + tbo or y + .5 * yspace
+						local y1 = (fretPos == topFret) and height2 + .25 * yspace + tbo or y + .5 * yspace
 						local x2 = x + (b2 - b1) * xspace
 						nwcdraw.setPen(penStyle, barreThickness)
 						nwcdraw.moveTo(x, y1)
@@ -442,6 +585,7 @@ local function _audit(t)
 end
 
 return {
+--	nwcut = { ['Test'] = 'ClipText' },
 	spec = _spec,
 	create = _create,
 	width = _width,
