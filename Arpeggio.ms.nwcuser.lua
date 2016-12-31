@@ -1,4 +1,4 @@
--- Version 1.3
+-- Version 2.0
 
 --[[----------------------------------------------------------------
 This plugin draws an arpeggio marking next to a chord, and can optionally play the notes in 
@@ -49,6 +49,45 @@ are only used for downward arpeggios, but one can be added for an upward arpeggi
 a score. The default setting is off (unchecked). 
 --]]----------------------------------------------------------------
 
+if nwcut then
+	local userObjTypeName = arg[1]
+	local score = nwcut.loadFile()
+
+	local once = 'Add'
+	local noteobjTypes = { Chord = true, RestChord = true }
+	
+	local function applyArpeggio(o)
+		if not once or o:IsFake() then return end
+
+		if o.UserType == userObjTypeName then
+			once = 'Del'
+			return 'delete'
+		elseif noteobjTypes[o.ObjType] then
+			local opts = o:Provide('Opts')
+			if once == 'Add' then
+				local o2 = nwcItem.new('|User|'..userObjTypeName)
+				o2.Opts.Pos = 0
+				opts.Muted = ''
+				once = false
+				return { o2, o }
+			else
+				opts.Muted = nil
+				once = false
+			end
+		end
+	end
+
+	score:forSelection(applyArpeggio)
+	if not once then
+		score:save()
+	else
+		nwcut.msgbox(('No chord found for %s'):format(userObjTypeName))
+	end
+	return
+end
+
+local _nwcut = { ['Toggle'] = 'ClipText' }
+
 local user = nwcdraw.user
 
 local function drawSquig(x, y)
@@ -59,7 +98,7 @@ local function drawSquig(x, y)
 	nwcdraw.moveTo(x, y)
 	nwcdraw.beginPath()
 	nwcdraw.bezier(x1, y1, x2, y2, x3, y3)
-	nwcdraw.line(x3 + xo, y3 + yo)
+	nwcdraw.lineBy(xo, yo)
 	nwcdraw.bezier(x2 + xo, y2 + yo, x1 + xo, y1 + yo, x + xo, y + yo)
 	nwcdraw.closeFigure()
 	nwcdraw.endPath()
@@ -69,14 +108,12 @@ local function drawArrow(x, y, dir)
 	local a, b, c = .3, .3*dir, 1.5*dir
 	nwcdraw.moveTo(x, y)
 	nwcdraw.beginPath()
-	nwcdraw.line(x-a, y-b)
-	nwcdraw.line(x, y+c)
-	nwcdraw.line(x+a, y-b)
+	nwcdraw.lineBy(-a, -b, a, b+c, a, -b-c)
 	nwcdraw.closeFigure()
 	nwcdraw.endPath()
 end
 
-local spec_Arpeggio = {
+local _spec = {
 	{ id='Side', label='Side of Chord', type='enum', default='left', list={'left', 'right'} },
 	{ id='Dir', label='Direction', type='enum', default='up', list={'up', 'down'} },
 	{ id='Offset', label='Horizontal Offset', type='float', default=0, min=-5, max=5, step=.1 },
@@ -87,14 +124,14 @@ local spec_Arpeggio = {
 	{ id='ForceArrow', label='Force Arrowhead for Up Arpeggio', type='bool', default=false }
 }
 
-local function audit_Arpeggio(t)
+local function _audit(t)
 	if t.Speed then
 		t.Rate = t.Speed*4
 		t.Speed = nil
 	end
 end
 
-local function draw_Arpeggio(t)
+local function _draw(t)
 	if not user:find('next', 'note') then return end
 	local noteCount = user:noteCount()
 	if noteCount == 0 then return end
@@ -125,32 +162,33 @@ local function draw_Arpeggio(t)
 	end
 end
 
-local _play, _begin = nwc.ntnidx.new(), nwc.ntnidx.new()
-local function play_Arpeggio(t)
+local play, begin = nwc.ntnidx.new(), nwc.ntnidx.new()
+local function _play(t)
 	if not t.Play then return end
-	_play:find('next', 'duration')
-	local noteCount = _play:noteCount()
+	play:find('next', 'duration')
+	local noteCount = play:noteCount()
 	if noteCount == 0 then return end
-	_play:find('next')
-	local duration = _play:sppOffset()
+	play:find('next')
+	local duration = play:sppOffset()
 	if duration < 1 then return end
-    _play:find('prior')
-	_begin:find('first')
+    play:find('prior')
+	begin:find('first')
  	local arpeggioShift = math.min(4 * nwcplay.PPQ / t.Rate, duration / noteCount)
-    local startOffset = t.Anticipated and math.max(-arpeggioShift * (noteCount-1), _begin:sppOffset()) or 0
+    local startOffset = t.Anticipated and math.max(-arpeggioShift * (noteCount-1), begin:sppOffset()) or 0
 	for i = 1, noteCount do
 		local thisShift = arpeggioShift * ((t.Dir == 'down') and noteCount-i or i-1) + startOffset
-        if _play:isTieOut() then
-            nwcplay.midi(thisShift, 'noteOn', nwcplay.getNoteNumber(_play:notePitchPos(i)), nwcplay.getNoteVelocity())
+        if play:isTieOut() then
+            nwcplay.midi(thisShift, 'noteOn', nwcplay.getNoteNumber(play:notePitchPos(i)), nwcplay.getNoteVelocity())
         else
-		    nwcplay.note(thisShift, duration-thisShift, nwcplay.getNoteNumber(_play:notePitchPos(i)))
+		    nwcplay.note(thisShift, duration-thisShift, nwcplay.getNoteNumber(play:notePitchPos(i)))
         end
 	end
 end
 
 return {
-	spec = spec_Arpeggio,
-	draw = draw_Arpeggio,
-	play = play_Arpeggio,
-	audit = audit_Arpeggio,
+	nwcut = _nwcut,
+	spec = _spec,
+	draw = _draw,
+	play = _play,
+	audit = _audit,
 }
