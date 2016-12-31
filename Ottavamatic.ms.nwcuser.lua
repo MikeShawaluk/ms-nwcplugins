@@ -1,4 +1,4 @@
--- Version 1.4
+-- Version 2.0
 
 --[[----------------------------------------------------------------
 This plugin draws 8va/15ma/22ma (bassa) markings in a score by looking for 
@@ -56,6 +56,36 @@ of the 8va section. The range of values is -10.0 to 10.0, and the default value 
 Horizontal offset for the position of the ending tail, relative to the last note or rest
 of the 8va section. The range of values is -10.0 to 10.0, and the default value is 0.
 --]]----------------------------------------------------------------
+if nwcut then
+	local userObjTypeName = arg[1]
+	local score = nwcut.loadFile()
+	local staffTrans = 0
+	local markTrans = { ['22ma']=36, ['15ma']=24, ['8va']=12, ['8va bassa']=-12, ['15ma bassa']=-24, ['22ma bassa']=-36 }
+	local markType = nwcut.prompt('Type:', '|22ma|15ma|8va|8va bassa|15ma bassa|22ma bassa', '8va')
+	local trans = markTrans[markType]
+	local pos = trans > 0 and 10 or -10
+	
+	local function getStaffTrans(o)
+		if o:IsFake() and o.ObjType == 'Instrument' and not o.Opts.DynVel then
+			staffTrans = o.Opts.Trans
+		end
+	end
+	
+	local function insertInstrChange(trans, pos)
+		local o = nwcItem.new('|Instrument')
+		o.Opts.Trans = trans
+		o.Opts.Pos = pos
+		return o
+	end
+
+	local staff, i1, i2 = score:getSelection()
+	score:forSelection(getStaffTrans)
+	table.insert(staff.Items, i1, insertInstrChange(trans + staffTrans, pos))
+	staff:add(insertInstrChange(staffTrans, pos))
+	score:setSelection(staff)
+	score:save()
+	return
+end
 
 local userObjTypeName = ...
 local userObjSigName = nwc.toolbox.genSigName(userObjTypeName)
@@ -149,13 +179,11 @@ local function drawShift(drawpos1, drawpos2, extendingSection, endOfSection, shi
 	if shiftDir > 0 and label:match('^%d+') then
 		local part1, part2 = label:match('(%d*)(%D*)')
 		part1 = labelPrefix .. (part1 or '')
-		local part1Len = nwcdraw.calcTextSize(part1)
-		local part2Len = nwcdraw.calcTextSize(part2)
 		nwcdraw.text(part1)
-		nwcdraw.moveTo(x1+part1Len, y2+d*.95)
+		nwcdraw.moveBy(0, d*.95)
 		nwcdraw.text(part2)
 		if labelSuffix ~= '' then
-			nwcdraw.moveTo(x1+part1Len+part2Len, y2)
+			nwcdraw.moveBy(0, -d*.95)
 			nwcdraw.text(labelSuffix)
 		end
 	else
@@ -223,6 +251,7 @@ local function transpose_Ottavamatic(t, semitones, notepos, updpatch)
 end
 
 return {
+	nwcut = { ['Apply'] = 'ClipText' },
 	spec = spec_Ottavamatic,
 	create = create_Ottavamatic,
 	width = draw_Ottavamatic,

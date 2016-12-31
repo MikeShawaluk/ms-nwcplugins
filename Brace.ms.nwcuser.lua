@@ -1,4 +1,4 @@
--- Version 1.1
+-- Version 2.0
 
 --[[----------------------------------------------------------------
 This will draw various character shapes of configurable size, weight and direction. They can be useful for lyrics and other purposes.
@@ -89,8 +89,8 @@ local function drawCurlyBrace(t)
 	local x1, y1, x2, y2, x3, y3 = -.75, 1.5, .25, 4, -.5, 5
 	local h, w, o = t.Height*.1, t.Width*dirMult[t.Direction], t.Offset
 	local xo = t.Weight*.2
-	nwcdraw.beginPath()
 	nwcdraw.moveTo(x3*w+o, y3*h)
+	nwcdraw.beginPath()
 	bezSegment(x2, y2, x1, y1, 0, 0, h, w, o)
 	bezSegment(x1, -y1, x2, -y2, x3, -y3, h, w, o)
 	bezSegment(x2+xo, -y2, x1+xo, -y1, 0, 0, h, w, o)
@@ -103,16 +103,10 @@ local function drawSquareBracket(t)
 	local xo = t.Weight*.07*dirMult[t.Direction]
 	local yo = t.Weight*.07*nwcdraw.getAspectRatio()
 	local x1 = w*.4
-	nwcdraw.beginPath()
 	nwcdraw.moveTo(o+xo)
-	nwcdraw.line(o+xo, h+yo)
-	nwcdraw.line(o-xo-x1, h+yo)
-	nwcdraw.line(o-xo-x1, h-yo)
-	nwcdraw.line(o-xo, h-yo)
-	nwcdraw.line(o-xo, -h+yo)
-	nwcdraw.line(o-xo-x1, -h+yo)
-	nwcdraw.line(o-xo-x1, -h-yo)
-	nwcdraw.line(o+xo, -h-yo)
+	nwcdraw.beginPath()
+	nwcdraw.lineBy(0, h+yo, -xo*2-x1, 0, 0, -yo*2, x1, 0)
+	nwcdraw.lineBy(0, (-h+yo)*2, -x1, 0, 0, -yo*2, xo*2+x1, 0)
 	nwcdraw.endPath()
 end
 
