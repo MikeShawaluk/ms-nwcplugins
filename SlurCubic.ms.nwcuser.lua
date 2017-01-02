@@ -1,4 +1,4 @@
--- Version 2.0
+-- Version 2.0a
 
 --[[----------------------------------------------------------------
 This plugin draws a solid, dashed or dotted cubic Bezier slur with adjustable end point positions and curve shape. 
@@ -165,24 +165,30 @@ end
 
 local function noteStuff(item, slurDir)
 	local opts = item:objProp('Opts') or ''
-	local stem, slur, baseNote, dotted
+	local stem, slur, baseNote, dotted, duration
 	local slurNote = 1
-	if item:isSplitVoice() and item:objType() ~= 'RestChord' then
-		slur = slurDir == 0 and item:stemDir() or slurDir
-		if slur == 1 then slurNote = item:noteCount() end
-		stem = item:stemDir(slurNote)
-		baseNote, dotted = item:durationBase(slurNote), item:isDotted(slurNote)
+	if item:isSplitVoice() then
+		if item:objType() == 'RestChord' then
+			stem = item:stemDir(slurNote)
+			slur = slurDir == 0 and -stem or slurDir
+			if slur == 1 then slurNote = item:noteCount() end
+		else
+			slur = slurDir == 0 and item:stemDir() or slurDir
+			if slur == 1 then slurNote = item:noteCount() end
+			stem = item:stemDir(slurNote)
+		end
+		baseNote, dotted, duration = item:durationBase(slurNote), item:isDotted(), item:durationBase()
 	else
 		stem = item:stemDir() or 1
-		baseNote, dotted = item:durationBase(), item:isDotted()
+		baseNote, dotted, duration = item:durationBase(), item:isDotted(), item:durationBase()
 		slur = slurDir == 0 and (dirNum[opts:match('Slur=(%a+)')] or -stem) or slurDir 
 	end
 	local arcPitch, noteheadOffset = 3.75, .5
-	if baseNote == 'Whole' and dotted then
+	if duration == 'Whole' and dotted then
 		arcPitch, noteheadOffset = 7.75, .65
-	elseif baseNote == 'Whole' then
+	elseif duration == 'Whole' then
 		arcPitch, noteheadOffset = 5.75, .65
-	elseif baseNote == 'Half' then
+	elseif duration == 'Half' then
 		arcPitch = 5.75
 	end
 	return stem, slur, arcPitch, noteheadOffset, baseNote
@@ -213,10 +219,6 @@ local function _draw(t)
 		local xl, yl = startNote:xyAnchor()
 		local xr, yr = startNote:xyRight()
 		x1, y1 = (xl + xr) * .5 + startOffsetX, yl + startOffsetY + slurDir * 4
-	elseif startObjType == 'RestChord' and startStem == slurDir then
-		local xl, yl = startNote:xyAnchor(startStem)
-		local xr, yr = startNote:xyRight(startStem)
-		x1, y1 = (xl + xr) * .5 + startOffsetX, yl + startOffsetY + slurDir * 2
 	else
 		local startNoteYBottom, startNoteYTop = startNote:notePos(1) or 0, startNote:notePos(startNote:noteCount()) or 0
 		x1 = startNote:xyStemAnchor(startStem) or startNote:xyRight(startStem)
@@ -228,10 +230,6 @@ local function _draw(t)
 		local xl, yl = endNote:xyAnchor()
 		local xr, yr = endNote:xyRight()
 		x2, y2 = (xl + xr) * .5 + endOffsetX, yl + endOffsetY + slurDir * 4
-	elseif endObjType == 'RestChord' and endStem == slurDir then
-		local xl, yl = endNote:xyAnchor(endStem)
-		local xr, yr = endNote:xyRight(endStem)
-		x2, y2 = (xl + xr) * .5 + endOffsetX, yl + endOffsetY + slurDir * 2
 	else
 		local endNoteYBottom, endNoteYTop = endNote:notePos(1) or 0, endNote:notePos(endNote:noteCount()) or 0
 		x2 = endNote:xyStemAnchor(endStem) or endNote:xyAnchor(endStem)
