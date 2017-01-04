@@ -121,21 +121,40 @@ for k, s in ipairs(_spec) do
 	end
 end
 
+local paramTable = {
+	{ _spec2.StartOffsetX, _spec2.StartOffsetY, 'Start Offset' },
+	{ _spec2.Balance, _spec2.Strength, 'Balance/Strength' },
+	{ _spec2.EndOffsetX, _spec2.EndOffsetY, 'End Offset' },
+}
+
+_menu[#_menu+1] = { type='command', name='Choose Edit Target:', separator=true, disable=true }
+
+local sep = true
+for k, p in ipairs(paramTable) do
+	_menu[#_menu+1] = { type='command', name=p[3], disable=false, data=k }
+end
+
 local function _menuInit(t)
 	for k, m in ipairs(_menu) do
-		local s = _spec[m.data]
-		if s then
-			local v = t[s.id]
-			m.default = v
+		if m.type == 'choice' then
+			local s = _spec[m.data]
+			if s then
+				local v = t[s.id]
+				m.default = v
+			end
+		elseif not m.disable then
+			m.checkmark = (tonumber(t.ap) == m.data)
 		end
 	end
 end
 
 local function _menuClick(t, menu, choice)
+	local m = _menu[menu]
 	if choice then
-		local m = _menu[menu]
 		local s = _spec[m.data]
 		t[s.id] = m.list[choice]
+	else
+		t.ap = m.data
 	end
 end
 
@@ -256,12 +275,6 @@ end
 local function _audit(t)
 	t.ap = nil
 end
-
-local paramTable = {
-	{ _spec2.StartOffsetX, _spec2.StartOffsetY },
-	{ _spec2.Balance, _spec2.Strength },
-	{ _spec2.EndOffsetX, _spec2.EndOffsetY },
-}
 
 local function toggleParam(t)
 	local ap = tonumber(t.ap) or #paramTable
