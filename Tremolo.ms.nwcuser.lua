@@ -57,19 +57,19 @@ if nwcut then
 		local opts, stemDir, dot, duration		
 		if o:ContainsNotes() and not o:Is('RestChord') and not o.Opts.Dur2 then -- don't convert rest chords or split voice chords
 			local o1 = nwcItem.new('|RestChord')
-			opts = o.Opts.Opts or {}
+			opts = o:Provide('Opts')
 			stemDir = (opts.Stem or 'Up') == 'Up' and 'Down' or 'Up'
 			duration, dot = parseDur(o.Opts.Dur)
 			if duration then
 				local newDur = noteDurBase[noteDurBaseRev[duration]+1] or '16th'
 				if duration == '8th' then duration = '4th' end
 				o1:Provide('Dur2', duration)
-				if dot then o1:Provide('Dur2')[dot] = '' end
+				if dot then o1.Opts.Dur2[dot] = '' end
 				o1:Provide('Dur', newDur)
 				o1:Provide('Opts', opts)
-				o1:Provide('Opts').Stem = stemDir
-				o1:Provide('Opts').HideRest = ''
-				o1:Provide('Opts').Muted = ''
+				o1.Opts.Opts.Stem = stemDir
+				o1.Opts.Opts.HideRest = ''
+				o1.Opts.Opts.Muted = ''
 				o1:Provide('Pos2', o.Opts.Pos)
 				firstNote = not firstNote
 				if not firstNote then
