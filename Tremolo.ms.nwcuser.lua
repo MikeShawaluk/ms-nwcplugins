@@ -1,4 +1,4 @@
--- Version 2.0
+-- Version 2.0a
 
 --[[----------------------------------------------------------------
 This plugin creates two-note tremolo markings. It draws the markings, and will optionally play the notes in tremolo style.
@@ -62,9 +62,10 @@ if nwcut then
 			duration, dot = parseDur(o.Opts.Dur)
 			if duration then
 				local newDur = noteDurBase[noteDurBaseRev[duration]+1] or '16th'
+				o1.Opts.Dur2 = o.Opts.Dur
+				o1.Opts.Dur2[duration] = nil
 				if duration == '8th' then duration = '4th' end
-				o1:Provide('Dur2', duration)
-				if dot then o1.Opts.Dur2[dot] = '' end
+				o1.Opts.Dur2[duration] = ''
 				o1:Provide('Dur', newDur)
 				o1:Provide('Opts', opts)
 				o1.Opts.Opts.Stem = stemDir
@@ -188,7 +189,7 @@ end
 return {
 	nwcut = _nwcut,
 	spec = _spec,
-    spin = _spin,
+	spin = _spin,
 	draw = _draw,
 	play = _play,
 }
