@@ -1,4 +1,4 @@
--- Version 2.0
+-- Version 2.0a
 
 --[[----------------------------------------------------------------
 This plugin draw a guitar chord chart and optionally strums the chord when the song is played. 
@@ -208,27 +208,44 @@ local commonChords = {
 	['G#+'] = { 'x x 2 1 1 o', '', 1 },
 	['G#sus'] = { 'x x 1 1 2 4', '', 1 },
 }
-
+	local allTonics = { 'Ab', 'A', 'A#', 'Bb', 'B', 'C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G' }
+	local allChords = { '', 'm', '6', '7', '9', 'm6', 'm7', 'maj7', 'dim', '+', 'sus' }
+	local fsMap = {
+		['Ab'] = 'G#', 
+		['Bb'] = 'A#', 
+		['Db'] = 'C#', 
+		['Eb'] = 'D#', 
+		['Gb'] = 'F#',
+		['F#'] = 'Gb',
+		['D#'] = 'Eb', 
+		['C#'] = 'Db',
+		['A#'] = 'Bb',
+		['G#'] = 'Ab',
+	}
 --if nwcut then
 --	local userObjTypeName = arg[1]
 --	local score = nwcut.loadFile()
 --	local staff, i1, i2 = score:getSelection()
+--	local chord, chordName, o
 	
---	for k2,v2 in ipairs( {'','m','6','7','9','m6','m7','maj7','dim','+','sus'} ) do	
---		for k1,v1 in ipairs( {'C','C#','D','D#','E','F','F#','G','G#','A','A#','B'} ) do
---			local chord = v1 .. v2
---			local o = nwcItem.new('User|' .. userObjTypeName)
---			o.Opts.Name = chord
---			o.Opts.Finger = commonChords[chord][1]
---			o.Opts.Barre = commonChords[chord][2]
---			o.Opts.TopFret = commonChords[chord][3]
---			o.Opts.Span = 1
---			o.Opts.Pos = 5
---			o.Opts.Size = 2
---			o.Opts.Anticipated = false
---			staff:add(o)
---			staff:add(nwcItem.new('|Rest|Dur:Half'))
---			staff:add(nwcItem.new('|Bar'))
+--	for k1, v1 in ipairs({ 'Ab', 'A', 'Bb', 'B', 'C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G' }) do
+--		for k2, v2 in ipairs(allChords) do
+--			chordName = v1 .. v2
+--			chord = commonChords[chordName] and chordName or string.gsub(chordName, v1, fsMap[v1] or v1)
+--			if commonChords[chord] then
+--				o = nwcItem.new('User|' .. userObjTypeName)
+--				o.Opts.Name = chordName
+--				o.Opts.Finger = commonChords[chord][1]
+--				o.Opts.Barre = commonChords[chord][2]
+--				o.Opts.TopFret = commonChords[chord][3]
+--				o.Opts.Span = 1
+--				o.Opts.Pos = 5
+--				o.Opts.Size = 3
+--				o.Opts.Anticipated = false
+--				staff:add(o)
+--				staff:add(nwcItem.new('|Rest|Dur:Half|Visibility:Never'))
+--				staff:add(nwcItem.new(v2 == 'sus' and '|Bar|SysBreak:Y' or '|Bar'))
+--			end
 --		end
 --	end
 	
@@ -352,18 +369,44 @@ local function _menuClick(t, menu, choice)
 	end
 end
 
+local tonics = {}
+for k, v in pairs(commonChords) do
+	local t, c
+	if k ~= '(Custom)' then
+		t, c = k:match('([A-G][b#]?)(.*)')
+		if not tonics[t] then tonics[t] = true end
+	end
+end
+for k, v in pairs(fsMap) do
+	if not tonics[k] and tonics[v] then
+		tonics[k] = true
+	end
+end
+local tonicsList = '|(Custom)'
+for k, v in ipairs(allTonics) do
+	if tonics[v] then
+		tonicsList = tonicsList .. '|' .. v
+	end
+end
+
 local function _create(t)
 	local chord
-	local tonic = nwcui.prompt('Select Tonic', '|(Custom)|C|C#|Db|D|D#|Eb|E|F|F#|Gb|G|G#|Ab|A|A#|Bb|B')
-	if not tonic then return end
+	local tonic = nwcui.prompt('Select Tonic', tonicsList)
 	if tonic ~= '(Custom)' then
-		chord = nwcui.prompt('Select Chord', string.gsub('|@|@m|@6|@7|@9|@m6|@m7|@maj7|@dim|@+|@sus', '@', tonic))
+		local chordsList = ''
+		for k, v in ipairs(allChords) do
+			local ch = tonic .. v
+			if commonChords[ch] or commonChords[(fsMap[tonic] or '') .. v] then
+				chordsList = chordsList .. '|' .. ch
+			end
+		end
+		chord = nwcui.prompt('Select Chord', chordsList)
+	else
+		chord = tonic
 	end
-	if not chord then return end
-	t.Name = (tonic == '(Custom)') and '' or chord
+	t.Name = (chord == '(Custom)') and '' or chord
 	if not commonChords[chord] then
-		local f2s = { Ab='G#', Bb='A#', Db='C#', Eb='D#', Gb='F#' }
-		chord = string.gsub(chord, tonic, f2s[tonic])
+		chord = string.gsub(chord, tonic, fsMap[tonic])
 	end
 	t.Finger = commonChords[chord][1]
 	t.Barre = commonChords[chord][2]
