@@ -1,4 +1,4 @@
--- Version 2.0
+-- Version 2.0a
 
 --[[----------------------------------------------------------------
 This object creates a single note tremolo marking. It draws the markings, and will optionally play the note in tremolo style.
@@ -88,36 +88,64 @@ local _spec = {
 
 local beamHeight, beamSpacing, beamHalfWidth, beamStemOffset, beamSlope = .6, 1.6, 0.55, 1, 0.6
 
+local function hasTargetNote(idx)
+	return idx:find('next','noteRestBar') and (idx:noteCount() > 0)
+end
+
+local function errorSymbol()
+	local _, my = nwcdraw.getMicrons()
+	nwcdraw.setPen('solid', my*.3)
+	local x, y = 4 / nwcdraw.getAspectRatio(), 4 * .866
+	local f, w = 'fill', true
+	for i = 1, 2 do
+		nwcdraw.setWhiteout(w)
+		nwcdraw.moveTo(0, 0)
+		nwcdraw.beginPath()
+		nwcdraw.lineBy(-x, 0, x*.5, y)
+		nwcdraw.closeFigure()
+		nwcdraw.endPath(f)
+		f = 'stroke'
+		w = false
+	end
+	nwcdraw.setFont('Times New Roman', 3.2, 'b')
+	nwcdraw.alignText('baseline', 'center')
+	nwcdraw.moveTo(-x*.5, 0.4)
+	nwcdraw.text('!')
+end
+
 local function _draw(t)
 	local _, my = nwcdraw.getMicrons()
 	local stemWeight = my*0.0126
 	local offset = t.Offset
 	local beams = t.Beams
-
+	
 	nwcdraw.setPen('solid', stemWeight)
-	if not user:find('next', 'note') then return end
-	local whichVoice = t.Which == whichList[1] and user:noteCount() or 1
+	if hasTargetNote(user) then
+		local whichVoice = t.Which == whichList[1] and user:noteCount() or 1
 
-	local stemDir = user:stemDir(whichVoice)
-	local x, ys = user:xyStemTip(stemDir)
-	local xa, ya = user:xyAlignAnchor(stemDir)
+		local stemDir = user:stemDir(whichVoice)
+		local x, ys = user:xyStemTip(stemDir)
+		local xa, ya = user:xyAlignAnchor(stemDir)
 
-	local wf = x and 1 or -1
-	local j = durations[user:durationBase(whichVoice)]
-	if j then
-		offset = offset + (user:isBeamed(whichVoice) and j*2-.75 or j*1.5+3.75+stemDir/4)
-	end	
-	x = x or xa + .65
-	ys = ys and ys-offset*stemDir or ya-(offset+2)*stemDir*wf
-	for i = 0, beams-1 do
-		local y = ys-(i*beamSpacing+beamStemOffset)*stemDir*wf
-		nwcdraw.moveTo(x-beamHalfWidth, y)
-		nwcdraw.beginPath()
-		nwcdraw.line(x+beamHalfWidth, y+beamSlope)
-		nwcdraw.line(x+beamHalfWidth, y+beamSlope-beamHeight)
-		nwcdraw.line(x-beamHalfWidth, y-beamHeight)
-		nwcdraw.closeFigure()
-		nwcdraw.endPath()
+		local wf = x and 1 or -1
+		local j = durations[user:durationBase(whichVoice)]
+		if j then
+			offset = offset + (user:isBeamed(whichVoice) and j*2-.75 or j*1.5+3.75+stemDir/4)
+		end	
+		x = x or xa + .65
+		ys = ys and ys-offset*stemDir or ya-(offset+2)*stemDir*wf
+		for i = 0, beams-1 do
+			local y = ys-(i*beamSpacing+beamStemOffset)*stemDir*wf
+			nwcdraw.moveTo(x-beamHalfWidth, y)
+			nwcdraw.beginPath()
+			nwcdraw.line(x+beamHalfWidth, y+beamSlope)
+			nwcdraw.line(x+beamHalfWidth, y+beamSlope-beamHeight)
+			nwcdraw.line(x-beamHalfWidth, y-beamHeight)
+			nwcdraw.closeFigure()
+			nwcdraw.endPath()
+		end
+	else
+		errorSymbol()
 	end
 end
 
@@ -127,7 +155,7 @@ end
 
 local function _play(t)
 	if not t.Play then return end
-	if not idx:find('next', 'note') then return end
+	if not hasTargetNote(idx) then return end
 	local whichStemDir = idx:objType() == 'RestChord' and idx:stemDir(1) or whichStemDirList[t.Which]
 	local b = t.Beams + (durations[idx:durationBase(1)] or 0)
 	local dur = nwcplay.PPQ / 2^b * (t.TripletPlayback and 2/3 or 1)	
