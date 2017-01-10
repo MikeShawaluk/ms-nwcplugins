@@ -1,4 +1,4 @@
--- Version 2.0a
+-- Version 2.0b
 
 --[[----------------------------------------------------------------
 This object creates a single note tremolo marking. It draws the markings, and will optionally play the note in tremolo style.
@@ -88,29 +88,29 @@ local _spec = {
 
 local beamHeight, beamSpacing, beamHalfWidth, beamStemOffset, beamSlope = .6, 1.6, 0.55, 1, 0.6
 
+local stopsItems = { Note=1, Chord=1, RestChord=1, Rest=-1, Bar=-1, RestMultiBar=-1, Boundary=-1 }
+
 local function hasTargetNote(idx)
-	return idx:find('next','noteRestBar') and (idx:noteCount() > 0)
+	while idx:find('next') do
+		local d = stopsItems[idx:objType()]
+		if d then return d > 0 end
+		if (idx:userType() == userObjTypeName) then return false end
+	end
+	return false
 end
 
-local function errorSymbol()
-	local _, my = nwcdraw.getMicrons()
-	nwcdraw.setPen('solid', my*.3)
-	local x, y = 4 / nwcdraw.getAspectRatio(), 4 * .866
-	local f, w = 'fill', true
-	for i = 1, 2 do
-		nwcdraw.setWhiteout(w)
-		nwcdraw.moveTo(0, 0)
+local function drawBeams(beams, x, ys, stemDir, wf, isError)
+	if not nwcdraw.isDrawing() then return isError and beamHalfWidth*2 or 0 end
+	for i = 0, beams-1 do
+		local y = ys-(i*beamSpacing+beamStemOffset)*stemDir*wf
+		nwcdraw.moveTo(x-beamHalfWidth, y)
 		nwcdraw.beginPath()
-		nwcdraw.lineBy(-x, 0, x*.5, y)
+		nwcdraw.line(x+beamHalfWidth, y+beamSlope)
+		nwcdraw.line(x+beamHalfWidth, y+beamSlope-beamHeight)
+		nwcdraw.line(x-beamHalfWidth, y-beamHeight)
 		nwcdraw.closeFigure()
-		nwcdraw.endPath(f)
-		f = 'stroke'
-		w = false
+		nwcdraw.endPath()
 	end
-	nwcdraw.setFont('Times New Roman', 3.2, 'b')
-	nwcdraw.alignText('baseline', 'center')
-	nwcdraw.moveTo(-x*.5, 0.4)
-	nwcdraw.text('!')
 end
 
 local function _draw(t)
@@ -118,35 +118,31 @@ local function _draw(t)
 	local stemWeight = my*0.0126
 	local offset = t.Offset
 	local beams = t.Beams
-	
-	nwcdraw.setPen('solid', stemWeight)
-	if hasTargetNote(user) then
-		local whichVoice = t.Which == whichList[1] and user:noteCount() or 1
 
-		local stemDir = user:stemDir(whichVoice)
-		local x, ys = user:xyStemTip(stemDir)
-		local xa, ya = user:xyAlignAnchor(stemDir)
-
-		local wf = x and 1 or -1
-		local j = durations[user:durationBase(whichVoice)]
-		if j then
-			offset = offset + (user:isBeamed(whichVoice) and j*2-.75 or j*1.5+3.75+stemDir/4)
-		end	
-		x = x or xa + .65
-		ys = ys and ys-offset*stemDir or ya-(offset+2)*stemDir*wf
-		for i = 0, beams-1 do
-			local y = ys-(i*beamSpacing+beamStemOffset)*stemDir*wf
-			nwcdraw.moveTo(x-beamHalfWidth, y)
-			nwcdraw.beginPath()
-			nwcdraw.line(x+beamHalfWidth, y+beamSlope)
-			nwcdraw.line(x+beamHalfWidth, y+beamSlope-beamHeight)
-			nwcdraw.line(x-beamHalfWidth, y-beamHeight)
-			nwcdraw.closeFigure()
-			nwcdraw.endPath()
+	if not hasTargetNote(idx) then
+		if nwcdraw.getTarget() == 'edit' then
+			return drawBeams(beams, -beamHalfWidth, 0, 1, 1, true)
 		end
-	else
-		errorSymbol()
+		return 0
 	end
+	if not nwcdraw.isDrawing() then return 0 end
+	if not user:find(idx) then return end
+	nwcdraw.setPen('solid', stemWeight)
+	
+	local whichVoice = t.Which == whichList[1] and user:noteCount() or 1
+
+	local stemDir = user:stemDir(whichVoice)
+	local x, ys = user:xyStemTip(stemDir)
+	local xa, ya = user:xyAlignAnchor(stemDir)
+
+	local wf = x and 1 or -1
+	local j = durations[user:durationBase(whichVoice)]
+	if j then
+		offset = offset + (user:isBeamed(whichVoice) and j*2-.75 or j*1.5+3.75+stemDir/4)
+	end	
+	x = x or xa + .65
+	ys = ys and ys-offset*stemDir or ya-(offset+2)*stemDir*wf
+	drawBeams(beams, x, ys, stemDir, wf, false)
 end
 
 local function _audit(t)
@@ -216,6 +212,7 @@ return {
 	nwcut = _nwcut,
 	spec = _spec,
 	draw = _draw,
+	width = _draw,
 	play = _play,
 	onChar = _onChar,
     audit = _audit,
