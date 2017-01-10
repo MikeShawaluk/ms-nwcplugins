@@ -67,6 +67,7 @@ if nwcut then
 	return
 end
 	
+local userObjTypeName = ...	
 local idx = nwc.ntnidx
 local user = nwcdraw.user
 local durations = { Eighth=1, Sixteenth=2, Thirtysecond=3, Sixtyfourth=4 }
