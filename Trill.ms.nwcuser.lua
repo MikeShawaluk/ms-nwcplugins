@@ -1,4 +1,4 @@
--- Version 2.0
+-- Version 2.0a
 
 --[[----------------------------------------------------------------
 This plugin draws a trill above or below a set of notes, and optionally plays the trill.
@@ -36,23 +36,32 @@ if nwcut then
 	local userObjTypeName = arg[1]
 	local score = nwcut.loadFile()
 	local span = 0
-	local noteobjTypes = { Note=true, Rest=true, Chord=true, RestChord=true }
+	local noteObjTypes = { Note=true, Chord=true, RestChord=true }
+	local noteRestObjTypes = { Note=true, Rest=true, Chord=true, RestChord=true }
+	local found = false
 
 	local function CalculateSpan(o)
-		if not o:IsFake() and noteobjTypes[o.ObjType] then
-			span = span + 1
+		if not o:IsFake() then
+			if noteObjTypes[o.ObjType] then
+				found = true
+			end
+			if found and noteRestObjTypes[o.ObjType] then
+				span = span + 1
+			end
 		end
 	end
 
 	local function AddTrill(o)
 		if span and not o:IsFake() then
-			local o2 = nwcItem.new('|User|'..userObjTypeName)
-			o2.Opts.Class = 'Span'
-			o2.Opts.Pos = 9
-			o2.Opts.Span = span
-			o:Provide('Opts').Muted = ''
-			span = false
-			return { o2, o }
+			if noteObjTypes[o.ObjType] then
+				local o2 = nwcItem.new('|User|'..userObjTypeName)
+				o2.Opts.Class = 'Span'
+				o2.Opts.Pos = 9
+				o2.Opts.Span = span
+				o:Provide('Opts').Muted = ''
+				span = false
+				return { o2, o }
+			end
 		end
 	end
 
@@ -66,6 +75,7 @@ if nwcut then
 	return
 end
 
+local userObjTypeName = ...
 local user = nwcdraw.user
 local startNote = nwc.drawpos.new()
 local endNote = nwc.drawpos.new()
@@ -105,8 +115,19 @@ local _spec = {
 
 local _nwcut = { ['Apply'] = 'ClipText' }
 
+local stopsItems = { Note=1, Chord=1, RestChord=1, Rest=-1, Bar=-1, RestMultiBar=-1, Boundary=-1 }
+
+local function hasTargetNote(idx)
+	while idx:find('next') do
+		local d = stopsItems[idx:objType()]
+		if d then return d > 0 end
+		if (idx:userType() == userObjTypeName) then return false end
+	end
+	return false
+end
+
 local function _span(t)
-	return t.Span, t.Span
+	return t.Span
 end
 
 local function _audit(t)
@@ -116,13 +137,30 @@ end
 
 local function _draw(t)
 	local atSpanFront = not user:isAutoInsert()
+--	print('atSpanFront', tostring(atSpanFront))
 	local span = t.Span
 	local scale = t.Scale / 100
 	local accStyle = t.AccStyle
 	local accStyleVars = accStyleList[accStyle]
-
+	nwcdraw.setFontClass('StaffSymbols')
+	nwcdraw.setFontSize(nwcdraw.getFontSize()*scale)
+	local trLen = nwcdraw.calcTextSize(tr)
+	
+	if not hasTargetNote(idx) then
+		if nwcdraw.getTarget() == 'edit' then
+			if not nwcdraw.isDrawing() then return trLen end
+			nwcdraw.alignText('middle', 'right')
+			nwcdraw.setFontSize(nwcdraw.getFontSize()*scale)
+			nwcdraw.text(tr)
+		end
+		return 0
+	end
+	if not nwcdraw.isDrawing() then return 0 end
+--	if not user:find(idx) then return end
+	
+	nwcdraw.alignText('middle', 'left')
 	startNote:find('next', 'note')
-	if not startNote then return end
+--	if not startNote then return end
 	local x1 = startNote:xyTimeslot() + t.StartOffset
 
 	local atSpanEnd = endNote:find('span', _span(t))
@@ -134,14 +172,8 @@ local function _draw(t)
 	end
 
 	local x2 = endNote:xyAnchor() + t.EndOffset
-
-	nwcdraw.alignText('middle', 'left')
-
 	local acc = accCharList[t.Accidental]
-	nwcdraw.setFontClass('StaffSymbols')
-	nwcdraw.setFontSize(nwcdraw.getFontSize()*scale)
 
-	local trLen = nwcdraw.calcTextSize(tr)
 	local spLen = nwcdraw.calcTextSize(sp)
 	local lpLen = nwcdraw.calcTextSize(lp)
 	local rpLen = nwcdraw.calcTextSize(rp)
@@ -185,6 +217,7 @@ end
 
 local function _play(t)
 	if not t.Play then return end
+	if not hasTargetNote(idx) then return end
 	local notes = {}
 	local dur = nwcplay.calcDurLength(t.PlayNote)
 	play1:reset()
@@ -216,8 +249,8 @@ local function _play(t)
 end
 
 local function _spin(t, d)
-	t.AccStyle = t.AccStyle + d
-	t.AccStyle = t.AccStyle
+	t.Span = t.Span + d
+	t.Span = t.Span
 end
 
 return {
@@ -227,5 +260,6 @@ return {
 	spec = _spec,
 	spin = _spin,
 	draw = _draw,
+	width = _draw,
 	play = _play,
 }
