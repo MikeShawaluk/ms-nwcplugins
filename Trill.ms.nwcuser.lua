@@ -52,8 +52,10 @@ if nwcut then
 	end
 
 	local function AddTrill(o)
-		if span and not o:IsFake() then
-			if noteObjTypes[o.ObjType] then
+		if not o:IsFake() then
+			if o.UserType == userObjTypeName then
+				return 'delete'
+			elseif span and noteObjTypes[o.ObjType] then
 				local o2 = nwcItem.new('|User|'..userObjTypeName)
 				o2.Opts.Class = 'Span'
 				o2.Opts.Pos = 9
@@ -115,11 +117,11 @@ local _spec = {
 
 local _nwcut = { ['Apply'] = 'ClipText' }
 
-local stopsItems = { Note=1, Chord=1, RestChord=1, Rest=-1, Bar=-1, RestMultiBar=-1, Boundary=-1 }
+local stopItems = { Note=1, Chord=1, RestChord=1, Rest=-1, Bar=-1, RestMultiBar=-1, Boundary=-1 }
 
 local function hasTargetNote(idx)
 	while idx:find('next') do
-		local d = stopsItems[idx:objType()]
+		local d = stopItems[idx:objType()]
 		if d then return d > 0 end
 		if (idx:userType() == userObjTypeName) then return false end
 	end
@@ -218,6 +220,7 @@ end
 local function _play(t)
 	if not t.Play then return end
 	if not hasTargetNote(idx) then return end
+	local maxOffset = nwcplay.MAXSPPOFFSET or (32*nwcplay.PPQ)
 	local notes = {}
 	local dur = nwcplay.calcDurLength(t.PlayNote)
 	play1:reset()
@@ -241,8 +244,9 @@ local function _play(t)
 	notes[2] = auxNoteInt == 0 and nwcplay.getNoteNumber(auxNotePos) or notes[1] + auxNoteInt
 
 	local j = t.WhichFirst == playWhichFirstList[1] and 1 or 2
-
-	for spp = play1:sppOffset(), play2:sppOffset()-1, dur do
+	local startPos = math.min(play1:sppOffset(), maxOffset)
+	local endPos = math.min(play2:sppOffset()-1, maxOffset-dur)
+	for spp = startPos ,endPos, dur do
 		nwcplay.note(spp, dur, notes[j])
 		j = 3 - j
 	end
