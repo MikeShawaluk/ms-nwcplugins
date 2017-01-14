@@ -1,4 +1,4 @@
--- Version 2.0a
+-- Version 2.0b
 
 --[[----------------------------------------------------------------
 This plugin draw a guitar chord chart and optionally strums the chord when the song is played. 
@@ -208,51 +208,20 @@ local commonChords = {
 	['G#+'] = { 'x x 2 1 1 o', '', 1 },
 	['G#sus'] = { 'x x 1 1 2 4', '', 1 },
 }
-	local allTonics = { 'Ab', 'A', 'A#', 'Bb', 'B', 'C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G' }
-	local allChords = { '', 'm', '6', '7', '9', 'm6', 'm7', 'maj7', 'dim', '+', 'sus' }
-	local fsMap = {
-		['Ab'] = 'G#', 
-		['Bb'] = 'A#', 
-		['Db'] = 'C#', 
-		['Eb'] = 'D#', 
-		['Gb'] = 'F#',
-		['F#'] = 'Gb',
-		['D#'] = 'Eb', 
-		['C#'] = 'Db',
-		['A#'] = 'Bb',
-		['G#'] = 'Ab',
-	}
---if nwcut then
---	local userObjTypeName = arg[1]
---	local score = nwcut.loadFile()
---	local staff, i1, i2 = score:getSelection()
---	local chord, chordName, o
-	
---	for k1, v1 in ipairs({ 'Ab', 'A', 'Bb', 'B', 'C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G' }) do
---		for k2, v2 in ipairs(allChords) do
---			chordName = v1 .. v2
---			chord = commonChords[chordName] and chordName or string.gsub(chordName, v1, fsMap[v1] or v1)
---			if commonChords[chord] then
---				o = nwcItem.new('User|' .. userObjTypeName)
---				o.Opts.Name = chordName
---				o.Opts.Finger = commonChords[chord][1]
---				o.Opts.Barre = commonChords[chord][2]
---				o.Opts.TopFret = commonChords[chord][3]
---				o.Opts.Span = 1
---				o.Opts.Pos = 5
---				o.Opts.Size = 3
---				o.Opts.Anticipated = false
---				staff:add(o)
---				staff:add(nwcItem.new('|Rest|Dur:Half|Visibility:Never'))
---				staff:add(nwcItem.new(v2 == 'sus' and '|Bar|SysBreak:Y' or '|Bar'))
---			end
---		end
---	end
-	
---	score:setSelection(staff)
---	score:save()
---	return		
---end
+local allTonics = { 'Ab', 'A', 'A#', 'Bb', 'B', 'C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G' }
+local allChords = { '', 'm', '6', '7', '9', 'm6', 'm7', 'maj7', 'dim', '+', 'sus' }
+local fsMap = {
+	['Ab'] = 'G#', 
+	['Bb'] = 'A#', 
+	['Db'] = 'C#', 
+	['Eb'] = 'D#', 
+	['Gb'] = 'F#',
+	['F#'] = 'Gb',
+	['D#'] = 'Eb', 
+	['C#'] = 'Db',
+	['A#'] = 'Bb',
+	['G#'] = 'Ab',
+}
 
 local userObjTypeName = ...
 local idx = nwc.ntnidx
@@ -303,7 +272,7 @@ for k, s in ipairs(_spec) do
 		_menu[#_menu+1] = {	type='command', name=s.label, disable=false, data=k }
 	end
 end
-local sep = true
+sep = true
 for k, s in ipairs(_spec) do
 	local t = boolOrEnum[s.type]
 	if t then
@@ -595,6 +564,7 @@ local function _play(t)
 	local stringNotes = {40, 45, 50, 55, 59, 64}
 	local k = {}
 	local stringNum = 1
+	local maxOffset = nwcplay.MAXSPPOFFSET or (32*nwcplay.PPQ)
 	for f in t.Finger:gmatch('%S+') do
 		if stringNum > #stringNotes then break end
 		local f1 = f:match('(%d)')
@@ -610,7 +580,7 @@ local function _play(t)
 	end
 	searchObj:find('next')
 	local duration = searchObj:sppOffset()
-	if duration < 1 then return end
+	if duration < 1 or duration > maxOffset then return end
 	local noteCount = #k
 	searchObj:find('first')
  	local arpeggioShift = math.min(duration, nwcplay.PPQ)/12
@@ -628,7 +598,6 @@ local function _audit(t)
 end
 
 return {
---	nwcut = { ['Test'] = 'ClipText' },
 	spec = _spec,
 	create = _create,
 	width = _width,
