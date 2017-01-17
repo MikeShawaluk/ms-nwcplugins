@@ -1,4 +1,4 @@
--- Version 2.0c
+-- Version 2.0d
 
 --[[----------------------------------------------------------------
 This object creates a single note tremolo marking. It draws the markings, and will optionally play the note in tremolo style.
@@ -114,8 +114,6 @@ local function drawBeams(beams, x, ys, stemDir, wf, isError)
 	end
 end
 
-local allow = { edit=1, selector=1 }
-
 local function _draw(t)
 	local _, my = nwcdraw.getMicrons()
 	local stemWeight = my*0.0126
@@ -123,10 +121,7 @@ local function _draw(t)
 	local beams = t.Beams
 
 	if not hasTargetNote(idx) then
-		if allow[nwcdraw.getTarget()] then
-			return drawBeams(beams, -beamHalfWidth, 0, 1, 1, true)
-		end
-		return 0
+		return drawBeams(beams, -beamHalfWidth, 0, 1, 1, true)
 	end
 	if not nwcdraw.isDrawing() then return 0 end
 	if not user:find(idx) then return end
