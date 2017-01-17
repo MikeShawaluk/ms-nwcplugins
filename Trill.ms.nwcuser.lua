@@ -1,4 +1,4 @@
--- Version 2.0a
+-- Version 2.0b
 
 --[[----------------------------------------------------------------
 This plugin draws a trill above or below a set of notes, and optionally plays the trill.
@@ -139,7 +139,6 @@ end
 
 local function _draw(t)
 	local atSpanFront = not user:isAutoInsert()
---	print('atSpanFront', tostring(atSpanFront))
 	local span = t.Span
 	local scale = t.Scale / 100
 	local accStyle = t.AccStyle
@@ -149,20 +148,16 @@ local function _draw(t)
 	local trLen = nwcdraw.calcTextSize(tr)
 	
 	if not hasTargetNote(idx) then
-		if nwcdraw.getTarget() == 'edit' then
-			if not nwcdraw.isDrawing() then return trLen end
-			nwcdraw.alignText('middle', 'right')
-			nwcdraw.setFontSize(nwcdraw.getFontSize()*scale)
-			nwcdraw.text(tr)
-		end
-		return 0
+		if not nwcdraw.isDrawing() then return trLen end
+		nwcdraw.alignText('middle', 'right')
+		nwcdraw.setFontSize(nwcdraw.getFontSize()*scale)
+		nwcdraw.text(tr)
+		return
 	end
 	if not nwcdraw.isDrawing() then return 0 end
---	if not user:find(idx) then return end
 	
 	nwcdraw.alignText('middle', 'left')
 	startNote:find('next', 'note')
---	if not startNote then return end
 	local x1 = startNote:xyTimeslot() + t.StartOffset
 
 	local atSpanEnd = endNote:find('span', _span(t))
