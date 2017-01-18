@@ -1,4 +1,4 @@
--- Version 2.0b
+-- Version 2.0c
 
 --[[----------------------------------------------------------------
 This plugin draws a trill above or below a set of notes, and optionally plays the trill.
@@ -31,51 +31,6 @@ is -10.00 to 10.00. The default setting is 0.
 This will adjust the horizontal position of the trill's end point. The range of values 
 is -10.00 to 10.00. The default setting is 0.
 --]]----------------------------------------------------------------
-
-if nwcut then
-	local userObjTypeName = arg[1]
-	local score = nwcut.loadFile()
-	local span = 0
-	local noteObjTypes = { Note=true, Chord=true, RestChord=true }
-	local noteRestObjTypes = { Note=true, Rest=true, Chord=true, RestChord=true }
-	local found = false
-
-	local function CalculateSpan(o)
-		if not o:IsFake() then
-			if noteObjTypes[o.ObjType] then
-				found = true
-			end
-			if found and noteRestObjTypes[o.ObjType] then
-				span = span + 1
-			end
-		end
-	end
-
-	local function AddTrill(o)
-		if not o:IsFake() then
-			if o.UserType == userObjTypeName then
-				return 'delete'
-			elseif span and noteObjTypes[o.ObjType] then
-				local o2 = nwcItem.new('|User|'..userObjTypeName)
-				o2.Opts.Class = 'Span'
-				o2.Opts.Pos = 9
-				o2.Opts.Span = span
-				o:Provide('Opts').Muted = ''
-				span = false
-				return { o2, o }
-			end
-		end
-	end
-
-	score:forSelection(CalculateSpan)
-	if span > 0 then
-		score:forSelection(AddTrill)
-		score:save()
-	else
-		nwcut.msgbox(('Unable to apply %s'):format(userObjTypeName))
-	end
-	return
-end
 
 local userObjTypeName = ...
 local user = nwcdraw.user
@@ -115,8 +70,6 @@ local _spec = {
 	{ id='EndOffset', label='End Offset', type='float', step=0.1, min=-10, max=10, default=0 },
 }
 
-local _nwcut = { ['Apply'] = 'ClipText' }
-
 local stopItems = { Note=1, Chord=1, RestChord=1, Rest=-1, Bar=-1, RestMultiBar=-1, Boundary=-1 }
 
 local function hasTargetNote(idx)
@@ -139,7 +92,7 @@ end
 
 local function _draw(t)
 	local atSpanFront = not user:isAutoInsert()
-	local span = t.Span
+	local span = _span(t)
 	local scale = t.Scale / 100
 	local accStyle = t.AccStyle
 	local accStyleVars = accStyleList[accStyle]
@@ -253,7 +206,6 @@ local function _spin(t, d)
 end
 
 return {
-	nwcut = _nwcut,
 	span = _span,
 	audit = _audit,
 	spec = _spec,
