@@ -1,4 +1,4 @@
--- Version 2.0a
+-- Version 2.0b
 
 --[[----------------------------------------------------------------
 This plugin draws an arpeggio marking next to a chord, and can optionally play the notes in 
@@ -89,6 +89,18 @@ end
 local _nwcut = { ['Toggle'] = 'ClipText' }
 
 local user = nwcdraw.user
+local idx = nwc.ntnidx
+
+local stopItems = { Note=1, Chord=1, RestChord=1, Rest=-1, Bar=-1, RestMultiBar=-1, Boundary=-1 }
+
+local function hasTargetNote(idx)
+	while idx:find('next') do
+		local d = stopItems[idx:objType()]
+		if d then return d > 0 end
+		if (idx:userType() == userObjTypeName) then return false end
+	end
+	return false
+end
 
 local function drawSquig(x, y)
 	local xo, yo = .2, -.2
@@ -132,7 +144,17 @@ local function _audit(t)
 end
 
 local function _draw(t)
-	if not user:find('next', 'note') then return end
+	if not hasTargetNote(idx) then
+		local w = 1
+		if not nwcdraw.isDrawing() then return w end
+		for y = -1, 3, 2  do
+			drawSquig(w-1.6, y)
+		end
+		return
+	end
+	if not nwcdraw.isDrawing() then return 0 end
+	
+	user:find('next', 'note')	
 	local noteCount = user:noteCount()
 	if noteCount == 0 then return end
 	local _, my = nwcdraw.getMicrons()
@@ -165,7 +187,7 @@ end
 local play, begin = nwc.ntnidx.new(), nwc.ntnidx.new()
 local function _play(t)
 	if not t.Play then return end
-	play:find('next', 'duration')
+	if not hasTargetNote(play) then return end
 	local noteCount = play:noteCount()
 	if noteCount == 0 then return end
 	play:find('next')
@@ -188,6 +210,7 @@ end
 return {
 	nwcut = _nwcut,
 	spec = _spec,
+	width = _draw,
 	draw = _draw,
 	play = _play,
 	audit = _audit,
