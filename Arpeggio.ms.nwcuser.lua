@@ -150,6 +150,13 @@ local function _draw(t)
 		for y = -1, 3, 2  do
 			drawSquig(w-1.6, y)
 		end
+		if t.Dir == 'down' then
+			drawArrow(w-1.6, -3.25, -1)
+		else
+			if t.ForceArrow then
+				drawArrow(w-1.4, 2.95, 1)
+			end
+		end
 		return
 	end
 	if not nwcdraw.isDrawing() then return 0 end
