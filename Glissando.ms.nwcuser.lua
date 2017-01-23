@@ -1,4 +1,4 @@
--- Version 2.0
+-- Version 2.0a
 
 --[[----------------------------------------------------------------
 This will draw a glissando line between two notes, with optional text above the line. If either of the notes is a chord, the bottom notehead
@@ -23,8 +23,11 @@ This will adjust the auto-determined vertical (Y) position of the glissando's en
 This will adjust the weight (thickness) of both straight and wavy line types. The range of values is 0.0 to 5.0, where 1 is the standard line weight. The default setting is 1.
 --]]----------------------------------------------------------------
 
-local nextNote = nwc.drawpos.new()
-local priorNote = nwc.drawpos.new()
+local nextNote, priorNote = nwc.drawpos.new(), nwc.drawpos.new()
+local nextNoteidx, priorNoteidx = nwc.ntnidx.new(), nwc.ntnidx.new()
+local idx = nwc.ntnidx
+local user = nwcdraw.user
+
 local lineStyles = { 'solid', 'dot', 'dash', 'wavy' }
 local squig = '~'
 local showBoxes = { edit=true }
@@ -46,12 +49,23 @@ for k, v in ipairs(_spec) do
 	_spec2[v.id] = k
 end
 
+local function _create(t)
+	t.Class = 'Span'
+end
+
+local function _span(t)
+	return 1
+end
+
 local function _audit(t)
 	if t.Style then
 		if (t.Style == 'Wavy') then t.Pen = 'wavy' end
 		t.Style = nil
 	end
 	t.ap = nil
+	
+	local barSpan = (idx:find('span',_span(t)) or idx:find('last')) and idx:find('prior','bar') and (idx:indexOffset() > 0)
+	t.Class = barSpan and 'Span' or 'Standard'
 end
 
 local function box(x, y, ap, p)
@@ -64,25 +78,32 @@ local function box(x, y, ap, p)
 end
 
 local function _draw(t)
+	local atSpanFront = not user:isAutoInsert()
+	
 	local xyar = nwcdraw.getAspectRatio()
     local _, my = nwcdraw.getMicrons()
 	local pen, text, weight = t.Pen, t.Text, t.Weight
 	local thickness = my*.3*weight
 	local xo, yo = .25, .5
 	
-	if not priorNote:find('prior', 'note') then return end
-	if not nextNote:find('next', 'note') then return end
+	local atSpanEnd = nextNote:find('span',_span(t))
+	if not atSpanEnd then nextNote:find('last') end
+	priorNote:find('prior', 'note')
 	
-	local x1 = priorNote:xyRight()
-    local y1 = priorNote:notePos(1)
-	x1 = x1 + xo + t.StartOffsetX
-	local y2 = nextNote:notePos(1)
-	local x2 = t.EndOffsetX - xo
+	if not nextNoteidx:find('next', 'note') then return end
+	if not priorNoteidx:find('prior', 'note') then return end
+	
+	local x1 = atSpanFront and priorNote:xyRight() + xo + t.StartOffsetX or -1.25
+	local y1 = priorNoteidx:notePos(1)
+	
+	local x2 = (atSpanEnd and nextNote:xyAnchor() + t.EndOffsetX or 0) - xo 
+	local y2 = nextNoteidx:notePos(1)
+	
     local s = y1>y2 and 1 or y1<y2 and -1 or 0
 	y1 = y1 - yo*s + t.StartOffsetY
 	y2 = y2 + yo*s + t.EndOffsetY
 	local angle = math.deg(math.atan2((y2-y1), (x2-x1)*xyar))
-	if text ~= '' then
+	if atSpanFront and text ~= '' then
 		nwcdraw.alignText('bottom', 'center')
 		nwcdraw.setFontClass('StaffItalic')
 		nwcdraw.setFontSize(nwcdraw.getFontSize()*t.Scale*.01)
@@ -194,8 +215,10 @@ end
 
 
 return {
+	create = _create,
 	spec = _spec,
 	audit = _audit,
 	onChar = _onChar,
-	draw = _draw
+	draw = _draw,
+	span = _span,
 }
