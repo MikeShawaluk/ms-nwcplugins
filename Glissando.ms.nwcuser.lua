@@ -1,4 +1,4 @@
--- Version 2.0a
+-- Version 2.0b
 
 --[[----------------------------------------------------------------
 This will draw a glissando line between two notes, with optional text above the line. If either of the notes is a chord, the bottom notehead
@@ -23,6 +23,7 @@ This will adjust the auto-determined vertical (Y) position of the glissando's en
 This will adjust the weight (thickness) of both straight and wavy line types. The range of values is 0.0 to 5.0, where 1 is the standard line weight. The default setting is 1.
 --]]----------------------------------------------------------------
 
+local userObjTypeName = ...
 local nextNote, priorNote = nwc.drawpos.new(), nwc.drawpos.new()
 local nextNoteidx, priorNoteidx = nwc.ntnidx.new(), nwc.ntnidx.new()
 local idx = nwc.ntnidx
@@ -53,10 +54,6 @@ local function _create(t)
 	t.Class = 'Span'
 end
 
-local function _span(t)
-	return 1
-end
-
 local function _audit(t)
 	if t.Style then
 		if (t.Style == 'Wavy') then t.Pen = 'wavy' end
@@ -64,7 +61,7 @@ local function _audit(t)
 	end
 	t.ap = nil
 	
-	local barSpan = (idx:find('span',_span(t)) or idx:find('last')) and idx:find('prior','bar') and (idx:indexOffset() > 0)
+	local barSpan = (idx:find('span', 1) or idx:find('last')) and idx:find('prior','bar') and (idx:indexOffset() > 0)
 	t.Class = barSpan and 'Span' or 'Standard'
 end
 
@@ -77,33 +74,25 @@ local function box(x, y, ap, p)
 	nwcdraw.endPath(m)
 end
 
-local function _draw(t)
-	local atSpanFront = not user:isAutoInsert()
-	
+local stopItems = { Note=1, Chord=1, RestChord=1, Rest=-1, Bar=-1, RestMultiBar=-1, Boundary=-1 }
+
+local function hasPriorTargetNote(idx)
+	while idx:find('prior') do
+		local d = stopItems[idx:objType()]
+		if d then return d > 0 end
+		if (idx:userType() == userObjTypeName) then return false end
+	end
+	return false
+end
+
+local function drawGliss(x1, y1, x2, y2, drawText, t)
 	local xyar = nwcdraw.getAspectRatio()
     local _, my = nwcdraw.getMicrons()
 	local pen, text, weight = t.Pen, t.Text, t.Weight
-	local thickness = my*.3*weight
-	local xo, yo = .25, .5
-	
-	local atSpanEnd = nextNote:find('span',_span(t))
-	if not atSpanEnd then nextNote:find('last') end
-	priorNote:find('prior', 'note')
-	
-	if not nextNoteidx:find('next', 'note') then return end
-	if not priorNoteidx:find('prior', 'note') then return end
-	
-	local x1 = atSpanFront and priorNote:xyRight() + xo + t.StartOffsetX or -1.25
-	local y1 = priorNoteidx:notePos(1)
-	
-	local x2 = (atSpanEnd and nextNote:xyAnchor() + t.EndOffsetX or 0) - xo 
-	local y2 = nextNoteidx:notePos(1)
-	
-    local s = y1>y2 and 1 or y1<y2 and -1 or 0
-	y1 = y1 - yo*s + t.StartOffsetY
-	y2 = y2 + yo*s + t.EndOffsetY
+
 	local angle = math.deg(math.atan2((y2-y1), (x2-x1)*xyar))
-	if atSpanFront and text ~= '' then
+	
+	if drawText and text ~= '' then
 		nwcdraw.alignText('bottom', 'center')
 		nwcdraw.setFontClass('StaffItalic')
 		nwcdraw.setFontSize(nwcdraw.getFontSize()*t.Scale*.01)
@@ -111,8 +100,8 @@ local function _draw(t)
 		nwcdraw.text(text, angle)
 	end
 	if pen ~= 'wavy' then
-		if thickness ~= 0 then
-			nwcdraw.setPen(pen, thickness)	
+		if weight ~= 0 then
+			nwcdraw.setPen(pen, my*.3*weight)	
 			nwcdraw.line(x1, y1, x2, y2)
 		end
 	else
@@ -125,6 +114,39 @@ local function _draw(t)
 		nwcdraw.moveTo(x1, y1-1)
 		nwcdraw.text(string.rep(squig, count), angle)
 	end
+end
+
+local function _draw(t)
+	local atSpanFront = not user:isAutoInsert()
+	local atSpanEnd = nextNoteidx:find('span', 1)
+	
+	if not hasPriorTargetNote(priorNoteidx) or not atSpanEnd then
+		if not atSpanFront then return 0 end
+		local x, y = -4, 4
+		if not nwcdraw.isDrawing() then return -x end
+		drawGliss(x, 0, 0, y, true, t)
+		return
+	end
+	if not nwcdraw.isDrawing() then return 0 end
+	
+	local xo, yo = .25, .5
+	
+	nextNote:find(nextNoteidx)
+	priorNote:find(priorNoteidx)
+	
+	if not atSpanEnd then nextNoteidx:find('last') end
+	local x1 = atSpanFront and priorNote:xyRight() + xo + t.StartOffsetX or -1.25
+	local y1 = priorNoteidx:notePos(1)
+	
+	local x2 = (atSpanEnd and nextNote:xyAnchor() + t.EndOffsetX or 0) - xo 
+	local y2 = nextNoteidx:notePos(1)
+
+    local s = y1>y2 and 1 or y1<y2 and -1 or 0
+	y1 = y1 - yo*s + t.StartOffsetY
+	y2 = y2 + yo*s + t.EndOffsetY
+
+	drawGliss(x1, y1, x2, y2, atSpanFront, t)
+	
 	if t.ap and showBoxes[nwcdraw.getTarget()] then
 		local ap = tonumber(t.ap)
 		box(x1, y1, ap, 1)
@@ -220,5 +242,6 @@ return {
 	audit = _audit,
 	onChar = _onChar,
 	draw = _draw,
-	span = _span,
+	width = _draw,
+	span = function() return 1 end,
 }
