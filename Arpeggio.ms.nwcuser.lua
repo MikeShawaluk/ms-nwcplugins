@@ -1,4 +1,4 @@
--- Version 2.0b
+-- Version 2.0c
 
 --[[----------------------------------------------------------------
 This plugin draws an arpeggio marking next to a chord, and can optionally play the notes in 
@@ -88,6 +88,7 @@ end
 
 local _nwcut = { ['Toggle'] = 'ClipText' }
 
+local userObjTypeName = ...
 local user = nwcdraw.user
 local idx = nwc.ntnidx
 
