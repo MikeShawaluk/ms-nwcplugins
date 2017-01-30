@@ -1,4 +1,4 @@
--- Version 2.0b
+-- Version 2.0c
 
 --[[----------------------------------------------------------------
 This will draw a glissando line between two notes, with optional text above the line. If either of the notes is a chord, the bottom notehead
@@ -33,6 +33,14 @@ local lineStyles = { 'solid', 'dot', 'dash', 'wavy' }
 local squig = '~'
 local showBoxes = { edit=true }
 
+local PlaybackStyle = {'None','Chromatic','WhiteKeys', 'BlackKeys'}
+local KeyIntervals = {
+	None = {},
+	Chromatic = {0,1,2,3,4,5,6,7,8,9,10,11},
+	WhiteKeys = {0,2,4,5,7,9,11},
+	BlackKeys = {1,3,6,8,10},
+}
+
 local _spec = {
 	{ id='Pen', label='Line Style', type='enum', default=lineStyles[1], list=lineStyles },
 	{ id='Text', label='Text', type='text', default='gliss.' },
@@ -41,7 +49,8 @@ local _spec = {
 	{ id='StartOffsetY', label='Start Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='EndOffsetX', label='End Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='EndOffsetY', label='End Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='Weight', label='Line Weight', type='float', default=1, min=0, max=5, step=0.1 }
+	{ id='Weight', label='Line Weight', type='float', default=1, min=0, max=5, step=0.1 },
+	{ id='Playback', label='Playback', type='enum', default=PlaybackStyle[1], list=PlaybackStyle },
 }
 
 local _spec2 = {}
@@ -139,7 +148,7 @@ local function _draw(t)
 	local y1 = priorNoteidx:notePos(1)
 	
 	local x2 = (atSpanEnd and nextNote:xyAnchor() + t.EndOffsetX or 0) - xo 
-	local y2 = nextNoteidx:notePos(1)
+	local y2 = nextNoteidx:notePos(1) or 0
 
     local s = y1>y2 and 1 or y1<y2 and -1 or 0
 	y1 = y1 - yo*s + t.StartOffsetY
@@ -151,6 +160,52 @@ local function _draw(t)
 		local ap = tonumber(t.ap)
 		box(x1, y1, ap, 1)
 		box(x2, y2, ap, 2)
+	end
+end
+
+local function GlissOctaveNearestNextInterval(t, inOctaveSemiTone)
+	for i, v in ipairs(t) do
+		if v >= inOctaveSemiTone then return i-1 end
+	end
+	return 0
+end
+		
+local function CountGlissIntervals(k, v)
+	local o = math.floor(v/12)
+	local i = v % 12
+	
+	return #k*o + GlissOctaveNearestNextInterval(k, i)
+end
+
+local function GlissNoteFromInterval(k,v)
+	local opitches = #k
+	local o = math.floor(v/opitches)
+	local i = v % opitches
+	
+	return 12*o + k[i+1]
+end
+
+local function _play(t)
+	local playback = KeyIntervals[t.Playback]
+	if #playback < 1 then return end
+	
+	if not (hasPriorTargetNote(priorNoteidx) and nextNoteidx:find('span', 1)) then return end
+	local startSPP = priorNoteidx:sppOffset()
+	local dur = -startSPP
+	
+	local v1 = nwcplay.getNoteNumber(priorNoteidx:notePitchPos(1) or 0)
+	local v2 = nwcplay.getNoteNumber(nextNoteidx:notePitchPos(1) or 0)
+	local inc = (v1<v2) and 1 or -1
+	local interval1, interval2 = CountGlissIntervals(playback, v1, inc), CountGlissIntervals(playback, v2, inc)
+	local deltav = math.abs(interval1-interval2)-1
+	if deltav < 1 then return end
+	local deltaSPP = dur/(deltav+1)
+	if deltaSPP < 1 then return end
+	for i = 0, deltav do
+		local interval = interval1+(inc*i)
+		local notepitch = GlissNoteFromInterval(playback, interval)
+		if ((i==0) and (notepitch~=v1)) then notepitch = v1 end
+		nwcplay.note(startSPP+(deltaSPP*i), deltaSPP,notepitch)
 	end
 end
 
@@ -244,4 +299,5 @@ return {
 	draw = _draw,
 	width = _draw,
 	span = function() return 1 end,
+	play = _play,
 }
