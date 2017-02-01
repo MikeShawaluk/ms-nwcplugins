@@ -1,8 +1,8 @@
--- Version 2.0c
+-- Version 2.0d
 
 --[[----------------------------------------------------------------
 This will draw a glissando line between two notes, with optional text above the line. If either of the notes is a chord, the bottom notehead
-of that chord will be the starting or ending point of the line. It is strictly an ornament, and has no effect on playback.
+of that chord will be the starting or ending point of the line.
 @Pen
 Specifies the type for lines: solid, dot, dash or wavy. The default setting is solid.
 @Text
@@ -21,6 +21,9 @@ This will adjust the auto-determined horizontal (X) position of the glissando's 
 This will adjust the auto-determined vertical (Y) position of the glissando's end point. The range of values is -100.00 to 100.00. The default setting is 0.
 @Weight
 This will adjust the weight (thickness) of both straight and wavy line types. The range of values is 0.0 to 5.0, where 1 is the standard line weight. The default setting is 1.
+@Playback
+This can be used to activate different optional forms of play back. Most play back methods are best when the target (left side) note is muted. For PitchBend,
+the left note never be muted, and the instrument definition should establish a 24 semitone pitch bend.
 --]]----------------------------------------------------------------
 
 local userObjTypeName = ...
@@ -33,12 +36,13 @@ local lineStyles = { 'solid', 'dot', 'dash', 'wavy' }
 local squig = '~'
 local showBoxes = { edit=true }
 
-local PlaybackStyle = {'None','Chromatic','WhiteKeys', 'BlackKeys'}
+local PlaybackStyle = {'None','Chromatic','WhiteKeys', 'BlackKeys', 'PitchBend'}
 local KeyIntervals = {
 	None = {},
 	Chromatic = {0,1,2,3,4,5,6,7,8,9,10,11},
 	WhiteKeys = {0,2,4,5,7,9,11},
 	BlackKeys = {1,3,6,8,10},
+	PitchBend = {0},
 }
 
 local _spec = {
@@ -186,7 +190,8 @@ local function GlissNoteFromInterval(k,v)
 end
 
 local function _play(t)
-	local playback = KeyIntervals[t.Playback]
+	local playbackt = t.Playback
+	local playback = KeyIntervals[playbackt]
 	if #playback < 1 then return end
 	
 	if not (hasPriorTargetNote(priorNoteidx) and nextNoteidx:find('span', 1)) then return end
@@ -195,17 +200,33 @@ local function _play(t)
 	
 	local v1 = nwcplay.getNoteNumber(priorNoteidx:notePitchPos(1) or 0)
 	local v2 = nwcplay.getNoteNumber(nextNoteidx:notePitchPos(1) or 0)
+	if v2 == v1 then return end
+
 	local inc = (v1<v2) and 1 or -1
-	local interval1, interval2 = CountGlissIntervals(playback, v1, inc), CountGlissIntervals(playback, v2, inc)
-	local deltav = math.abs(interval1-interval2)-1
-	if deltav < 1 then return end
-	local deltaSPP = dur/(deltav+1)
-	if deltaSPP < 1 then return end
-	for i = 0, deltav do
-		local interval = interval1+(inc*i)
-		local notepitch = GlissNoteFromInterval(playback, interval)
-		if ((i==0) and (notepitch~=v1)) then notepitch = v1 end
-		nwcplay.note(startSPP+(deltaSPP*i), deltaSPP,notepitch)
+
+	if playbackt == 'PitchBend' then
+		-- this technique requires that the part have a dedicated midi channel, non-muted target note,
+		-- and a 24 semitone pitch bend range
+		local valSweep = (((inc < 1) and 0x02000 or 0x01FFF)/24)*math.min(24,math.abs(v2-v1))
+		local pbChanges = math.floor((dur/2) - 2)
+		for i = 1, pbChanges do
+			local pbVal = 0x02000 + math.floor((inc*i*valSweep)/pbChanges)
+			local d1,d2 = (pbVal % 128),math.floor(pbVal/128)
+			nwcplay.midi(startSPP+i*2,'pitchBend',d1,d2)
+		end
+		nwcplay.midi(0,'pitchBend',64,64)
+	else
+		local interval1, interval2 = CountGlissIntervals(playback, v1, inc), CountGlissIntervals(playback, v2, inc)
+		local deltav = math.abs(interval1-interval2)-1
+		if deltav < 1 then return end
+		local deltaSPP = dur/(deltav+1)
+		if deltaSPP < 1 then return end
+		for i = 0, deltav do
+			local interval = interval1+(inc*i)
+			local notepitch = GlissNoteFromInterval(playback, interval)
+			if ((i==0) and (notepitch~=v1)) then notepitch = v1 end
+			nwcplay.note(startSPP+(deltaSPP*i), deltaSPP,notepitch)
+		end
 	end
 end
 
