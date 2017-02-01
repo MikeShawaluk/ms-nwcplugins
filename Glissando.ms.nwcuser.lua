@@ -48,8 +48,8 @@ local KeyIntervals = {
 local _spec = {
 	{ id='Pen', label='Line Style', type='enum', default=lineStyles[1], list=lineStyles },
 	{ id='Text', label='Text', type='text', default='gliss.' },
-    { id='Scale', label='Text Scale (%)', type='int', min=5, max=400, step=5, default=75 },
-    { id='StartOffsetX', label='Start Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='Scale', label='Text Scale (%)', type='int', min=5, max=400, step=5, default=75 },
+	{ id='StartOffsetX', label='Start Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='StartOffsetY', label='Start Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='EndOffsetX', label='End Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='EndOffsetY', label='End Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
@@ -93,14 +93,13 @@ local function hasPriorTargetNote(idx)
 	while idx:find('prior') do
 		local d = stopItems[idx:objType()]
 		if d then return d > 0 end
-		if (idx:userType() == userObjTypeName) then return false end
 	end
 	return false
 end
 
 local function drawGliss(x1, y1, x2, y2, drawText, t)
 	local xyar = nwcdraw.getAspectRatio()
-    local _, my = nwcdraw.getMicrons()
+	local _, my = nwcdraw.getMicrons()
 	local pen, text, weight = t.Pen, t.Text, t.Weight
 
 	local angle = math.deg(math.atan2((y2-y1), (x2-x1)*xyar))
@@ -154,7 +153,7 @@ local function _draw(t)
 	local x2 = (atSpanEnd and nextNote:xyAnchor() + t.EndOffsetX or 0) - xo 
 	local y2 = nextNoteidx:notePos(1) or 0
 
-    local s = y1>y2 and 1 or y1<y2 and -1 or 0
+	local s = y1>y2 and 1 or y1<y2 and -1 or 0
 	y1 = y1 - yo*s + t.StartOffsetY
 	y2 = y2 + yo*s + t.EndOffsetY
 
