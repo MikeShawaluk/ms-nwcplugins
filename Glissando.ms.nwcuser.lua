@@ -189,6 +189,10 @@ local function GlissNoteFromInterval(k,v)
 	return 12*o + k[i+1]
 end
 
+local function isStandAloneMutedNote(n)
+	return n:isMute() and not n:isTieIn() and not n:isTieOut()
+end
+	
 local function _play(t)
 	local playbackt = t.Playback
 	local playback = KeyIntervals[playbackt]
@@ -198,30 +202,53 @@ local function _play(t)
 	local startSPP = priorNoteidx:sppOffset()
 	local dur = -startSPP
 	
-	local v1 = nwcplay.getNoteNumber(priorNoteidx:notePitchPos(1) or 0)
-	local v2 = nwcplay.getNoteNumber(nextNoteidx:notePitchPos(1) or 0)
-	if v2 == v1 then return end
+	local v1 = nwcplay.getNoteNumber(priorNoteidx:notePitchPos(1))
+	local v2 = nwcplay.getNoteNumber(nextNoteidx:notePitchPos(1))
+	if (not v1) or (not v2) or (v2 == v1) then return end
 
 	local inc = (v1<v2) and 1 or -1
 
 	if playbackt == 'PitchBend' then
-		-- this technique requires that the part have a dedicated midi channel, non-muted target note,
-		-- and a 24 semitone pitch bend range
-		local valSweep = (((inc < 1) and 0x02000 or 0x01FFF)/24)*math.min(24,math.abs(v2-v1))
+		-- this technique requires that the part have a dedicated midi channel and a 24 semitone pitch bend range
+		local deltav = math.min(math.abs(v1-v2),24)
+		local pbStart,pbEnd = 0x02000,0x02000+inc*((0x01FFF*deltav)/24)
+		
+		-- if the initiating note stands alone (is not tied) and is muted, then the note pitch bend can
+		-- be applied against the target pitch with a full note duration
+		if isStandAloneMutedNote(priorNoteidx) then
+			local noteDur = dur
+			pbStart,pbEnd = 0x02000-inc*((0x01FFF*deltav)/24),0x02000
+			
+			-- allow the note pair to be connected together when both are stand alone muted
+			if isStandAloneMutedNote(nextNoteidx) and nextNoteidx:find('next') then
+				-- **limitation**: this always performs the target note in legato fashion, regardless of the active 
+				-- performance style or articulation marks, and it assumes the target note or chord matches the
+				-- priorNoteidx (if they don't match, the priorNoteidx controls what is played)
+				noteDur = noteDur + math.max(nextNoteidx:sppOffset(),1) - 1
+				nextNoteidx:find('prior')
+			end
+			
+			for j = 1, priorNoteidx:noteCount() or 0 do
+				local notenum = nwcplay.getNoteNumber(priorNoteidx:notePitchPos(j))+(inc*deltav)
+				local notevel = nwcplay.getNoteVelocity()
+				local bothsides = nextNoteidx:notePitchPos(j)
+				nwcplay.note(startSPP, bothsides and noteDur or dur, notenum, notevel)
+			end
+		end
+		
 		local pbChanges = math.floor((dur/2) - 2)
-		for i = 1, pbChanges do
-			local pbVal = 0x02000 + math.floor((inc*i*valSweep)/pbChanges)
-			local d1,d2 = (pbVal % 128),math.floor(pbVal/128)
+		for i = 0, pbChanges do
+			local pbVal = pbStart + math.floor((i*(pbEnd-pbStart))/pbChanges)
+			local d1,d2 = math.floor(pbVal % 128),math.floor(pbVal/128)
 			nwcplay.midi(startSPP+i*2,'pitchBend',d1,d2)
 		end
-		nwcplay.midi(0,'pitchBend',64,64)
+		nwcplay.midi(0,'pitchBend',0,64)
 	else
 		local interval1, interval2 = CountGlissIntervals(playback, v1, inc), CountGlissIntervals(playback, v2, inc)
-		local deltav = math.abs(interval1-interval2)-1
-		if deltav < 1 then return end
-		local deltaSPP = dur/(deltav+1)
+		local deltav = math.abs(interval1-interval2)
+		local deltaSPP = dur/deltav
 		if deltaSPP < 1 then return end
-		for i = 0, deltav do
+		for i = 0, deltav-1 do
 			local interval = interval1+(inc*i)
 			local notepitch = GlissNoteFromInterval(playback, interval)
 			if ((i==0) and (notepitch~=v1)) then notepitch = v1 end
