@@ -1,4 +1,4 @@
--- Version 2.0d
+-- Version 2.1
 
 --[[----------------------------------------------------------------
 This will draw a glissando line between two notes, with optional text above the line. If either of the notes is a chord, the bottom notehead
@@ -22,8 +22,10 @@ This will adjust the auto-determined vertical (Y) position of the glissando's en
 @Weight
 This will adjust the weight (thickness) of both straight and wavy line types. The range of values is 0.0 to 5.0, where 1 is the standard line weight. The default setting is 1.
 @Playback
-This can be used to activate different optional forms of play back. Most play back methods are best when the target (left side) note is muted. For PitchBend,
-the left note never be muted, and the instrument definition should establish a 24 semitone pitch bend.
+This can be used to activate different optional forms of play back. Most play back methods are best when the target (left side) note is muted.
+PitchBend also supports muting the right side note, which will result in a seemless note event that bends from one pitch to the other.
+
+For PitchBend, the staff/instrument definition should establish a 24 semitone pitch bend.
 --]]----------------------------------------------------------------
 
 local userObjTypeName = ...
