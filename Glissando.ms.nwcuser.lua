@@ -1,4 +1,4 @@
--- Version 2.1
+-- Version 2.11
 
 --[[----------------------------------------------------------------
 This will draw a glissando line between two notes, with optional text above the line. If either of the notes is a chord, the bottom notehead
@@ -23,9 +23,9 @@ This will adjust the auto-determined vertical (Y) position of the glissando's en
 This will adjust the weight (thickness) of both straight and wavy line types. The range of values is 0.0 to 5.0, where 1 is the standard line weight. The default setting is 1.
 @Playback
 This can be used to activate different optional forms of play back. Most play back methods are best when the target (left side) note is muted.
-PitchBend also supports muting the right side note, which will result in a seemless note event that bends from one pitch to the other.
+PitchBend also supports muting the right side note, which will result in a seamless note event that bends from one pitch to the other.
 
-For PitchBend, the staff/instrument definition should establish a 24 semitone pitch bend.
+For PitchBend, the staff/instrument definition should establish a 24 semitone pitch bend. For best results, the note pair should also be within ±24 semitones.
 --]]----------------------------------------------------------------
 
 local userObjTypeName = ...
@@ -44,7 +44,7 @@ local KeyIntervals = {
 	Chromatic = {0,1,2,3,4,5,6,7,8,9,10,11},
 	WhiteKeys = {0,2,4,5,7,9,11},
 	BlackKeys = {1,3,6,8,10},
-	PitchBend = {0},
+	PitchBend = {24},
 }
 
 local _spec = {
@@ -56,7 +56,7 @@ local _spec = {
 	{ id='EndOffsetX', label='End Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='EndOffsetY', label='End Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='Weight', label='Line Weight', type='float', default=1, min=0, max=5, step=0.1 },
-	{ id='Playback', label='Playback', type='enum', default=PlaybackStyle[1], list=PlaybackStyle },
+	{ id='Playback', label='Pla&yback', type='enum', default=PlaybackStyle[1], list=PlaybackStyle },
 }
 
 local _spec2 = {}
@@ -193,7 +193,13 @@ end
 local function isStandAloneMutedNote(n)
 	return n:isMute() and not n:isTieIn() and not n:isTieOut()
 end
-	
+
+-- function `partOfNextPlayGliss` has a side effect on `idx` so be careful when using it
+local function partOfNextPlayGliss(n)
+	if not idx:find(n) or not idx:find('next','noteOrRest') then return false end
+	return idx:find('prior','user',userObjTypeName,'Playback') and (idx:indexOffset() > 0)
+end
+
 local function _play(t)
 	local playbackt = t.Playback
 	local playback = KeyIntervals[playbackt]
@@ -211,17 +217,18 @@ local function _play(t)
 
 	if playbackt == 'PitchBend' then
 		-- this technique requires that the part have a dedicated midi channel and a 24 semitone pitch bend range
-		local deltav = math.min(math.abs(v1-v2),24)
-		local pbStart,pbEnd = 0x02000,0x02000+inc*((0x01FFF*deltav)/24)
+		local pbRange = playback[1]
+		local deltav = math.min(math.abs(v1-v2),pbRange)
+		local pbStart,pbEnd = 0x02000,0x02000+inc*((0x01FFF*deltav)/pbRange)
 		
 		-- if the initiating note stands alone (is not tied) and is muted, then the note pitch bend can
 		-- be applied against the target pitch with a full note duration
 		if isStandAloneMutedNote(priorNoteidx) then
 			local noteDur = dur
-			pbStart,pbEnd = 0x02000-inc*((0x01FFF*deltav)/24),0x02000
+			pbStart,pbEnd = 0x02000-inc*((0x01FFF*deltav)/pbRange),0x02000
 			
 			-- allow the note pair to be connected together when both are stand alone muted
-			if isStandAloneMutedNote(nextNoteidx) and nextNoteidx:find('next') then
+			if isStandAloneMutedNote(nextNoteidx) and not partOfNextPlayGliss(nextNoteidx) and nextNoteidx:find('next') then
 				-- **limitation**: this always performs the target note in legato fashion, regardless of the active 
 				-- performance style or articulation marks, and it assumes the target note or chord matches the
 				-- priorNoteidx (if they don't match, the priorNoteidx controls what is played)
