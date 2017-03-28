@@ -47,8 +47,7 @@ local function _create(t)
 		t.Pos = idx:userProp('Pos')
 		t.Font = idx:userProp('Font')
 		t.Scale = idx:userProp('Scale')
-		local inc = t.Type == typeList[1] and 0 or 1
-		t.Label = idx:userProp('Label') + inc
+		t.Label = idx:userProp('Label')
 	end
 end
 
