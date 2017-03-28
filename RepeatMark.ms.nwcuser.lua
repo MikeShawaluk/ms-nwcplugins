@@ -1,4 +1,4 @@
--- Version 0.2
+-- Version 0.3
 
 --[[--------------------------------------------------------------------------
 This draws a measure repeat mark, signifying a measure that is a repetition
@@ -15,13 +15,14 @@ on the bar line which separates the repeated measures.
 @Label
 Sets a label number to appear above the repeat mark. For single measure marks,
 the label is enclosed in parentheses. For double measure marks, the label is
-displayed as is. The default value is 0, which disables the label.
+displayed as is. The + and - keys will increment/decrement the label number value.
+The default value is 0, which disables the label. 
 @Font
 Sets the font for the optional label, from the available font classes. The
 default font is StaffBold.
 @Scale
 The scale factor for the optional label. This is a value from 5% to 400%; the
-default setting is 100%. The + and - keys will increase/decrease the value by 5%.
+default setting is 100%.
 --]]--------------------------------------------------------------------------
 
 local userObjTypeName = ...
@@ -43,14 +44,17 @@ local thickness, width, dotOffset, dotSize = 1, 3.5, 1.4, 0.2
 local function _create(t)
 	if idx:find('prior', 'user', userObjTypeName) then
 		t.Type = idx:userProp('Type')
+		t.Pos = idx:userProp('Pos')
+		t.Font = idx:userProp('Font')
+		t.Scale = idx:userProp('Scale')
 		local inc = t.Type == typeList[1] and 0 or 1
 		t.Label = idx:userProp('Label') + inc
 	end
 end
 
 local function _spin(t, dir)
-	t.Scale = t.Scale + dir*5
-	t.Scale = t.Scale
+	t.Label = t.Label + dir
+	t.Label = t.Label
 end
 
 local function drawBar(x, y, xyar)
