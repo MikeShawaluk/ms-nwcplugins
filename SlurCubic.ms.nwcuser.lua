@@ -1,4 +1,4 @@
--- Version 2.0a
+-- Version 2.1
 
 --[[----------------------------------------------------------------
 This plugin draws a solid, dashed or dotted cubic Bezier slur with adjustable end point positions and curve shape. 
@@ -108,14 +108,14 @@ local _spec = {
 	{ id='Span', label='&Note Span', type='int', default=2, min=2, step=1 },
 	{ id='Pen', label='&Line Type', type='enum', default='solid', list=nwc.txt.DrawPenStyle },
 	{ id='Dir', label='&Direction', type='enum', default='Default', list=dirList },
-	{ id='StartOffsetX', label='Start Offset &X', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='StartOffsetY', label='Start Offset &Y', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='EndOffsetX', label='End &Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='EndOffsetY', label='End O&ffset Y', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='LeftStrength', label='Left &Strength', type='float', default=1, min=0, max=100, step=0.1 },
-	{ id='LeftBalance', label='Left &Balance', type='float', default=0.5, min=0, max=1, step=0.05 },
-	{ id='RightStrength', label='Right S&trength', type='float', default=1, min=0, max=100, step=0.1 },
-	{ id='RightBalance', label='Right B&alance', type='float', default=0.5, min=0, max=1, step=0.05 },
+	{ id='StartOffsetX', label='Start Offset &X, Y', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='StartOffsetY', label='', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='EndOffsetX', label='End &Offset X, Y', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='EndOffsetY', label='', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='LeftStrength', label='Left &Strength, Balance', type='float', default=1, min=0, max=100, step=0.1 },
+	{ id='LeftBalance', label='', type='float', default=0.5, min=0, max=1, step=0.05 },
+	{ id='RightStrength', label='Right S&trength, Balance', type='float', default=1, min=0, max=100, step=0.1 },
+	{ id='RightBalance', label='', type='float', default=0.5, min=0, max=1, step=0.05 },
 }
 
 local _spec2 = {}

@@ -1,4 +1,4 @@
--- Version 2.0b
+-- Version 2.1
 
 --[[----------------------------------------------------------------
 This plugin draw a guitar chord chart and optionally strums the chord when the song is played. 
@@ -17,20 +17,21 @@ This determines the font style to be used for the chord name and label text. The
 are Serif (MusikChordSerif, Times New Roman), Sans (MusikChordSans, Arial) and Swing (SwingChord, SwingText).
 The default setting is Serif.
 @Finger
-The fingerings for each string, entered from low to high string, separate by spaces. Each 
+The fingerings for each string, entered from low to high pitch, separate by spaces. Each 
 position can be a number, indicating the fret position, or a 'o' or 'x' for open or unplayed 
-strings, respectively. A fret position can be appended with ':' and a number, to indicate the 
-finger number to be used for that string; the number will be placed inside the fingering dot.
+strings, respectively. For example, the fingering for a G major chord would be "3 2 o o o 3".
 
+Each numeric fret position can be appended with ':' and a number, to indicate the 
+finger number to be used for that string; the number will be drawn inside the fingering dot.
 When finger numbers are being used, the chart size will generally need to be 2 or larger for the
 numbers to be readable.
 @Barre
-Optional sets of strings to be held down by a particular finger, displayed by an arc over the 
+Optional groups of strings to be held down by a particular finger, displayed by an arc over the 
 fingering dots. Each barre to be drawn is indicated by the starting and ending string numbers, 
-separated by ':'. For example, 2:5 would add a bar between the second and fifth strings.
+separated by ':'. For example, 2:5 would add a barre between the second and fifth strings.
 
-Note that the fingering positions for a barre need to be on the same fret for it to appear 
-correctly.
+Note that the fingering positions for each end of a barre should be the same for the
+barre to be drawn correctly. 
 @Size
 The size of the chord chart, ranging from 1.0 to 5.0. The default is 1.
 @Frets
@@ -208,7 +209,7 @@ local commonChords = {
 	['G#+'] = { 'x x 2 1 1 o', '', 1 },
 	['G#sus'] = { 'x x 1 1 2 4', '', 1 },
 }
-local allTonics = { 'Ab', 'A', 'A#', 'Bb', 'B', 'C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G' }
+local allTonics = { 'C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'Ab', 'A', 'A#', 'Bb', 'B' }
 local allChords = { '', 'm', '6', '7', '9', 'm6', 'm7', 'maj7', 'dim', '+', 'sus' }
 local fsMap = {
 	['Ab'] = 'G#', 
@@ -241,17 +242,17 @@ local stringNames = { '1 (E)', '2 (A)', '3 (D)', '4 (G)', '5 (B)', '6 (e)' }
 local strings = #stringNames
 
 local _spec = {
-	{ id='Name', label='Chord Name', type='text', default='' },
-    { id='Style', label='Font Style', type='enum', default=styleList[1], list=styleList },
-	{ id='Finger', label='Fingerings', type='text', default='' },
-	{ id='Barre', label='Barres', type='text', default='' },
+	{ id='Name', label='Chord Name', type='text', default='', width=11 },
+    { id='Style', label='Style', type='enum', default=styleList[1], list=styleList, separator=' ' },
+	{ id='Finger', label='Fingerings', type='text', width=11, default='' },
+	{ id='Barre', label='Barres', type='text', width=11, default='', separator=' ' },
 	{ id='Size', label='Chart Size', type='float', default=1, min=0.5, max=5, step=.5 },
-	{ id='Frets', label='Frets to Show', type='int', default=4, min=3, max=10 },
+	{ id='Frets', label='Frets', type='int', default=4, min=3, max=10, separator=' ' },
 	{ id='Capo', label='Capo Position', type='int', default=0, min=0 },
 	{ id='TopFret', label='Top Fret', type='int', default=1, min=1 },
 	{ id='Span', label='Note Span', type='int', default=0, min=0 },
 	{ id='FretTextPosition', label='Fret Text Location', type='enum', default='top', list=fretTextPos },
-	{ id='Strum', label='Strum Direction', type='enum', default='down', list=strumStyles },
+	{ id='Strum', label='Strum Direction', type='enum', default='down', list=strumStyles, separator='' },
 	{ id='TopBarreOffset', label='Top Barre Offset', type='float', default=0, min=0, step=.25 },
 	{ id='Anticipated', label='Anticipated Playback', type='bool', default=true },
 }
@@ -351,16 +352,19 @@ for k, v in pairs(fsMap) do
 		tonics[k] = true
 	end
 end
-local tonicsList = '|(Custom)'
+local tonicsList = ''
 for k, v in ipairs(allTonics) do
 	if tonics[v] then
-		tonicsList = tonicsList .. '|' .. v
+		tonicsList = string.format('%s|%s', tonicsList, v)
+		--tonicsList = tonicsList .. '|' .. v
 	end
 end
+tonicsList = tonicsList .. '|(Custom)'
 
 local function _create(t)
 	local chord
 	local tonic = nwcui.prompt('Select Tonic', tonicsList)
+	if not tonic then return end
 	if tonic ~= '(Custom)' then
 		local chordsList = ''
 		for k, v in ipairs(allChords) do
@@ -370,6 +374,7 @@ local function _create(t)
 			end
 		end
 		chord = nwcui.prompt('Select Chord', chordsList)
+		if not chord then return end
 	else
 		chord = tonic
 	end

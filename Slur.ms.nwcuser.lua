@@ -1,4 +1,4 @@
--- Version 2.0a
+-- Version 2.1
 
 --[[----------------------------------------------------------------
 This plugin draws a solid, dashed or dotted slur with adjustable end point positions and curve shape. 
@@ -103,12 +103,12 @@ local _spec = {
 	{ id='Span', label='&Note Span', type='int', default=2, min=2, step=1 },
 	{ id='Pen', label='&Line Type', type='enum', default='solid', list=nwc.txt.DrawPenStyle },
 	{ id='Dir', label='&Direction', type='enum', default='Default', list=dirList },
-	{ id='StartOffsetX', label='Start Offset &X', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='StartOffsetY', label='Start Offset &Y', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='EndOffsetX', label='End &Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='EndOffsetY', label='End O&ffset Y', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='Strength', label='&Strength', type='float', default=1, min=0, max=100, step=0.1 },
-	{ id='Balance', label='&Balance', type='float', default=0, min=-.5, max=.5, step=0.05 },
+	{ id='StartOffsetX', label='Start Offset &X, Y', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='StartOffsetY', label='', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='EndOffsetX', label='End &Offset X, Y', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='EndOffsetY', label='', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='Strength', label='&Strength, Balance', type='float', default=1, min=0, max=100, step=0.1 },
+	{ id='Balance', label='', type='float', default=0, min=-.5, max=.5, step=0.05 },
 }
 
 local _spec2 = {}
