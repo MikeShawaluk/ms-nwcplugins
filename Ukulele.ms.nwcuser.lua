@@ -1,4 +1,4 @@
--- Version 0.2
+-- Version 0.3
 
 --[[----------------------------------------------------------------
 This plugin draw a ukulele chord chart. A variety of notation is shown, including 
@@ -31,9 +31,10 @@ The size of the chord chart, ranging from 1.0 to 5.0. The default is 1.
 The number of fret positions to show in the chart, ranging from 1 to 10. 
 The default is 4. 
 @TopFret
-The top fret number displayed in the chart. For larger values, a fret
-number will be displayed to the right of the chart, as specified by
-parameter Fret Number Position. The default is 1. 
+The top fret number displayed in the chart. When the value is 1, the top 
+border of the chart will be thicker. For larger values, the number of 
+the first fingered fret will be displayed to the right of the chart. The 
+default is 1. 
 @Span
 For playback, the number of notes/rests that the chord should span. A 
 value of 0 will disable playback. The default is 0. 
@@ -43,6 +44,8 @@ The default is true.
 @FretPos
 For charts where the top fret is greater than one, the fret position which
 will be labeled to the right of the chart. The default is 1.
+@NameOffset
+The vertical offset for the chord name, ranging from -5.0 to 5.0. The default is 0.
 --]]----------------------------------------------------------------
 
 local standardChords = {
@@ -509,6 +512,7 @@ local _spec = {
 	{ id='Span', label='Note Span', type='int', default=0, min=0 },
 	{ id='LabelOpen', label='Label Open Strings', type='bool', default=true },
 	{ id='FretPos', label='Fret Number Position', type='int', default=1, min=1, max=10 },
+	{ id='NameOffset', label='Chord Name Offset', type='float', default=0, min=-5, max=5, step=0.1 },
 }
 
 local tonics = {}
@@ -533,7 +537,7 @@ for k, v in ipairs(allTonics) do
 end
 tonicsList = tonicsList .. '|(Custom)'
 
-local priorParams = { 'Style', 'Size', 'Frets', 'Span', 'LabelOpen', 'Pos', 'FretPos' }
+local priorParams = { 'Style', 'Size', 'Frets', 'Span', 'LabelOpen', 'Pos', 'NameOffset' }
 
 local function _create(t)
 	local tuning = nwcui.prompt('Select Instrument', '|Soprano, Concert, Tenor|Baritone')
@@ -590,7 +594,7 @@ end
 local function _draw(t)
 	local _, my = nwcdraw.getMicrons()
 	local xyar = nwcdraw.getAspectRatio()
-	local size, frets, topFret, span, labelOpen, fretPos = t.Size, t.Frets, t.TopFret, t.Span, t.LabelOpen, t.FretPos
+	local size, frets, topFret, span, labelOpen, fretPos, nameOffset = t.Size, t.Frets, t.TopFret, t.Span, t.LabelOpen, t.FretPos, t.NameOffset
 	local penStyle = 'solid'
 	local lineThickness = my * 0.125 * size
 	local xspace, yspace = size / xyar, size
@@ -617,7 +621,7 @@ local function _draw(t)
 	for i = 0, frets do
 		nwcdraw.line(xoffset, i * yspace, xoffset + width, i * yspace)
 	end
-	nwcdraw.moveTo(offset/2, height + 1.75 * yspace)
+	nwcdraw.moveTo(offset/2, height + (1.75 + nameOffset) * yspace)
 	nwcdraw.setFont(chordFontFace, chordFontSize)
 	nwcdraw.alignText('baseline', 'center')
 	nwcdraw.text(t.Name)
@@ -636,6 +640,16 @@ local function _draw(t)
 	if topFret == 1 and highFret > frets then
 		topFret = math.max(highFret - frets + 1, 1)
 	end
+	local height2 = (topFret == 1) and height + .5 * yspace or height
+	if topFret == 1 then
+		nwcdraw.moveTo(xoffset, height)
+		nwcdraw.beginPath()
+		nwcdraw.line(xoffset, height2)
+		nwcdraw.line(xoffset+width, height2)
+		nwcdraw.line(xoffset+width, height)
+		nwcdraw.closeFigure()
+		nwcdraw.endPath()
+	end	
 	for f in t.Finger:gmatch('%S+') do
 		if stringNum > strings then break end
 		if tonumber(f) then
@@ -648,7 +662,7 @@ local function _draw(t)
 			end
 		else
 			if labelOpen or f == 'x' then
-				nwcdraw.moveTo(x, height + yspace * .25)
+				nwcdraw.moveTo(x, height2 + yspace * .25)
 				nwcdraw.text(f)
 			end
 		end
