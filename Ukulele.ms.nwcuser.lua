@@ -1,4 +1,4 @@
--- Version 0.4
+-- Version 0.5
 
 --[[----------------------------------------------------------------
 This plugin draw a ukulele chord chart. A variety of notation is shown, including 
@@ -640,7 +640,7 @@ local function _draw(t)
 	if topFret == 1 and highFret > frets then
 		topFret = math.max(highFret - frets + 1, 1)
 	end
-	local height2 = (topFret == 1) and height + .25 * yspace or height
+	local height2 = (topFret == 1) and height + .125 * yspace or height
 	if topFret == 1 then
 		nwcdraw.moveTo(xoffset, height)
 		nwcdraw.beginPath()
