@@ -1,4 +1,4 @@
--- Version 1.21
+-- Version 1.3
 
 --[[-----------------------------------------------------------------------------------------
 This plugin creates acciaccatura by drawing a slash on the stem of a plain grace note
@@ -12,16 +12,26 @@ up to the next Acciaccatura object occurrence.
 @Rate
 The playback rate for the acciaccatura, expressed as the number of notes per whole note
 duration. For example, 64 would correspond to a 1/64 note. A value of 0 disables playback,
-which is the default.
+which is the default. Also note that the grace note must be muted for playback to occur.
+@Style
+Determines the style for the slash ornament on down-stem notes. Selecting "Upward" will render
+the slash from lower left to upper right (the same as for up-stem notes), while selecting
+"Downward" will render the slash from upper left to lower right.  The default is "Upward".
 --]]-----------------------------------------------------------------------------------------
 
 local userObjTypeName = ...
 local userObjSigName = nwc.toolbox.genSigName(userObjTypeName)
 local drawpos = nwcdraw.user
 local nextObj = nwc.ntnidx.new()
+local styleList = { 'Upward', 'Downward' }
+local styleOffsets = {
+	['Upward'] = { -0.3, 0, 0.7, 2 },
+	['Downward'] = { -0.3, 2, 0.7, 0 },
+}
 
 local _spec = {
 	{ id='Rate', label='Rate', type='float', default=0, min=0, max=128, step=1 },
+	{ id='Style', label='Down-stem Style', type='enum', list=styleList, default=styleList[1] },
 }
 
 local function _draw(t)
@@ -29,7 +39,8 @@ local function _draw(t)
 	local w = isStaffSig and nwc.toolbox.drawStaffSigLabel(userObjSigName) or 0
 	if not nwcdraw.isDrawing() then return w end
 	if drawpos:isHidden() then return end
-	local x, y, y1
+	local style = t.Style
+	local x, y, sd, s
 	local _, my = nwcdraw.getMicrons()
 	local penWidth = my*.189
 	nwcdraw.setPen('solid', penWidth)
@@ -42,9 +53,11 @@ local function _draw(t)
 		until drawpos:isGrace() or not found
 		
 		if found and drawpos < nextObj and drawpos:isGrace() and drawpos:durationBase() == 'Eighth' and not drawpos:isBeamed() and not drawpos:isHidden() then
+			sd = drawpos:stemDir(0)
+			s = sd < 1 and styleOffsets[style] or styleOffsets['Upward']
 			x, y = drawpos:xyStemTip()
-			y1 = y - drawpos:stemDir(0)*2.4 - 1
-			nwcdraw.line(x-.3, y1, x+.7, y1+2)
+			y = y - sd*2.4 - 1
+			nwcdraw.line(x+s[1], y+s[2], x+s[3], y+s[4])
 		end
 		found = found and isStaffSig
 	end
