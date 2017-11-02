@@ -1,11 +1,11 @@
--- Version 2.1
+-- Version 2.1a
 
 --[[----------------------------------------------------------------
 This plugin draw a guitar chord chart and optionally strums the chord when the song is played. 
 A variety of notation is shown, including the chord name, open and excluded strings, barre 
 positions, fret position and optional finger numbers.
 
-When adding a new chord, the user can choose from 35 predefined chords, or can choose "(Custom)"
+When adding a new chord, the user can choose from 132 predefined chords, or can choose "(Custom)"
 to create a chord chart from scratch. The chord chart can be positioned vertical by changing the object marker position.
 
 When a chord is added to a staff, if there is another GuitarChord object earlier in the staff,
