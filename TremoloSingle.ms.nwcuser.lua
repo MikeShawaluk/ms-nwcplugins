@@ -1,4 +1,4 @@
--- Version 2.0d
+-- Version 2.0e
 
 --[[----------------------------------------------------------------
 This object creates a single note tremolo marking. It draws the markings, and will optionally play the note in tremolo style.
@@ -19,7 +19,7 @@ For playback, the number of beams determines the frequency and number of notes t
 
 The number of beams for a tremolo can be modified by highlighting the object and pressing the + or - keys.
 @Offset
-This allows the distance between the notehead and tremolo beams to be adjusted. The value can be between -5.00 and 5.00. 
+This allows the distance between the notehead and tremolo beams to be adjusted. The value can be between -10.00 and 10.00. 
 For stemmed notes, positive values move the beams away from the stem tip and toward the note head.
 For unstemmed (whole) notes, positive values move the beams away from the note head. The default setting is 0.
 @Play
@@ -80,7 +80,7 @@ local _nwcut = {
 
 local _spec = {
 	{ id='Beams', label='Number of Beams', type='int', default=3, min=1, max=4, step=1 },
-	{ id='Offset', label='Vertical Offset', type='float', default=0, min=-5, max=5, step=.5 },
+	{ id='Offset', label='Vertical Offset', type='float', default=0, min=-10, max=10, step=.5 },
 	{ id='Play', label='Play Notes', type='bool', default=true },
 	{ id='TripletPlayback', label='Triplet Playback', type='bool', default=false },
 	{ id='Which', label='Split Chord Member', type='enum', default=whichList[1], list=whichList },
@@ -213,5 +213,5 @@ return {
 	width = _draw,
 	play = _play,
 	onChar = _onChar,
-    audit = _audit,
+	audit = _audit,
 }
