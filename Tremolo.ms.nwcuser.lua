@@ -1,4 +1,4 @@
--- Version 2.0b
+-- Version 2.0c
 
 --[[----------------------------------------------------------------
 This plugin creates two-note tremolo markings. It draws the markings, and will optionally play the notes in tremolo style.
@@ -79,7 +79,6 @@ if nwcut then
 					local o2 = nwcItem.new('|User|' .. userObjTypeName)
 					o2.Opts.Pos = 0
 					o2.Opts.Beams = beams
-					if dot then o2.Opts.TripletPlayback = 'Y' end
 					return { o1, o2 }
 				else
 					return { o1 }
