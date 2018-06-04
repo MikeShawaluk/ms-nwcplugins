@@ -1,4 +1,4 @@
--- Version 2.0c
+-- Version 2.1
 
 --[[----------------------------------------------------------------
 This plugin creates two-note tremolo markings. It draws the markings, and will optionally play the notes in tremolo style.
@@ -29,6 +29,9 @@ Specifies that the playback notes should be in triplet rhythm. This will general
 @Variance
 Specifies a dynamic variance between the first and second chord. The specified value is a multiplier for the
 volume of the second note. This allows more realistic playback. The range of values is 50% to 200%, and the default setting is 100% (no variance).
+@Offset
+Specifies a vertical (staff position) offset to the right side of the beams, for whole note tremolos only. The range of values is -10 to 10, and the default setting is 0.
+This allows the beam angle to be adjusted; by default, the angle will be that of the lowest noteheads.
 --]]----------------------------------------------------------------
 
 if nwcut then
@@ -106,6 +109,7 @@ local _spec = {
 	{ id='Play', label='Play Notes', type='bool', default=true },
 	{ id='TripletPlayback', label='Triplet Playback', type='bool', default=false },
 	{ id='Variance', label='Variance (%)', type='int', default=100, min=50, max=200, step=5 },
+	{ id='Offset', label='Beam Angle Offset', type='float', default=0, min=-10, max=10, step=0.5 },
 }
 
 local function _draw(t)
@@ -123,7 +127,7 @@ local function _draw(t)
 	local x2 = nextNote:xyAnchor()
 	local dur = nextNote:durationBase()
 	x2s = x2s or x2
-	y2s = y2s and y2s + 0.04*stemDir or nextNote:notePos(1)+yu
+	y2s = y2s and y2s + 0.04*stemDir or nextNote:notePos(1)+yu+t.Offset
 	if not priorNote:find('prior','note') then return end
 	if priorNote:objType() ~= 'RestChord' then return end
 	if stemDir ~= priorNote:stemDir(1) then return end
