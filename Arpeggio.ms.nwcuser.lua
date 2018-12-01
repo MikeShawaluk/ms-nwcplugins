@@ -1,4 +1,4 @@
--- Version 2.0c
+-- Version 2.1
 
 --[[----------------------------------------------------------------
 This plugin draws an arpeggio marking next to a chord, and can optionally play the notes in 
@@ -207,10 +207,12 @@ local function _play(t)
     local startOffset = t.Anticipated and math.max(-arpeggioShift * (noteCount-1), begin:sppOffset()) or 0
 	for i = 1, noteCount do
 		local thisShift = arpeggioShift * ((t.Dir == 'down') and noteCount-i or i-1) + startOffset
-        if play:isTieOut(i) then
-            nwcplay.midi(thisShift, 'noteOn', nwcplay.getNoteNumber(play:notePitchPos(i)), nwcplay.getNoteVelocity())
-        else
-		    nwcplay.note(thisShift, duration-thisShift, nwcplay.getNoteNumber(play:notePitchPos(i)))
+		if not play:isTieIn(i) then
+        	if play:isTieOut(i) then
+            	nwcplay.midi(thisShift, 'noteOn', nwcplay.getNoteNumber(play:notePitchPos(i)), nwcplay.getNoteVelocity())
+        	else
+				nwcplay.note(thisShift, duration-thisShift, nwcplay.getNoteNumber(play:notePitchPos(i)))
+			end
         end
 	end
 end
