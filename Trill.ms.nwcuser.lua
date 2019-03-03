@@ -1,4 +1,4 @@
--- Version 2.0c
+-- Version 2.1
 
 --[[----------------------------------------------------------------
 This plugin draws a trill above or below a set of notes, and optionally plays the trill.
@@ -14,8 +14,9 @@ The displayed style of the accidental symbol, when present. The choices are 1 (p
 This specifies the accidental to be applied to the auxiliary note. Possible values are None, Sharp, Natural, Flat, Double Flat or Double Sharp. The default setting is None.
 @LineType
 This specifies the style of the extender line to be drawn. The choices are Wavy and Jagged, and the default setting is Wavy.
-@PlayNote
-This specifies the note duration to be used for playback. The choices are Sixteenth, Thirtysecond and Sixtyfourth, and the default setting is Thirtysecond.
+@Rate
+This specifies the rate at which the trill is played, as a number of notes per whole note duration. The range of 
+values is 16 (slow) to 128 (very fast), with a default setting of 32 (32nd notes).
 @WhichFirst
 This determines whether the principal note or the auxiliary note should be played first in the trill. The default setting is Principal.
 @AuxNoteInt
@@ -43,7 +44,7 @@ local idx = nwc.ntnidx
 local tr, lp, rp, sp = '`_', '(_', ')_', '_'
 local lineTypeList= { 'Wavy', 'Jagged' }
 local squigList = { Wavy = { '~', 1, 0 }, Jagged = { '-', .65, -1 } }
-local playNoteList = { 'Sixteenth', 'Thirtysecond', 'Sixtyfourth' }
+local playNoteRate = { Sixteenth=16, Thirtysecond=32, Sixtyfourth=64 }
 local accList = { 'None', 'Sharp', 'Natural', 'Flat', 'Double Flat', 'Double Sharp' }
 local accCharList = { None='', Sharp='d', Natural='e', Flat='f', ['Double Flat']='h', ['Double Sharp']='g' }
 local accNwctxtList = { None='', Sharp='#', Natural='n', Flat='b', ['Double Flat']='v', ['Double Sharp']='x'}
@@ -59,10 +60,10 @@ local accStyleList = {
 local _spec = {
 	{ id='Span', label='Note Span', type='int', default=0, min=0 },
 	{ id='Scale', label='Scale (%)', type='int', min=5, max=400, step=5, default=100 },
-	{ id='AccStyle', label='Accidental Style', type='int', default=1, min=1, max=#accStyleList},
+	{ id='AccStyle', label='Accidental Style', type='int', default=1, min=1, max=#accStyleList },
 	{ id='Accidental', label='Accidental', type='enum', default=accList[1], list=accList },
 	{ id='LineType', label='Line Type', type='enum', default=lineTypeList[1], list=lineTypeList },
-	{ id='PlayNote', label='Playback Note Type', type='enum', default=playNoteList[2], list=playNoteList },
+	{ id='Rate', label='Playback Rate', type='int', default=32, min=16, max=128 },
 	{ id='WhichFirst', label='Play Which First', type='enum', default=playWhichFirstList[1], list=playWhichFirstList },
 	{ id='AuxNoteInt', label='Auxiliary Note Interval', type='enum', default='Auto', list=auxNotePitchList },
 	{ id='Play', label='Playback Enabled', type='bool', default=true },
@@ -88,6 +89,10 @@ end
 local function _audit(t)
 	local barSpan = (idx:find('span', _span(t)) or idx:find('last')) and idx:find('prior','bar') and (idx:indexOffset() > 0)
 	t.Class = barSpan and 'Span' or 'Standard'
+	if t.PlayNote then
+		t.Rate = playNoteRate[t.PlayNote] or 32
+		t.PlayNote = nil
+	end
 end
 
 local function _draw(t)
@@ -170,7 +175,7 @@ local function _play(t)
 	if not hasTargetNote(idx) then return end
 	local maxOffset = nwcplay.MAXSPPOFFSET or (32*nwcplay.PPQ)
 	local notes = {}
-	local dur = nwcplay.calcDurLength(t.PlayNote)
+	local dur = (4*nwcplay.PPQ/t.Rate)
 	play1:reset()
 	play2:reset()
 	local sp = play1:staffPos()
