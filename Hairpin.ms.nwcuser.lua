@@ -41,11 +41,11 @@ local spec_Hairpin = {
 	{ id='Span', label='&Note Span', type='int', default=1, min=1, max=100, step=1 },
 	{ id='Type', label='&Type', type='enum', default=typeList[1], list=typeList },
 	{ id='Pen', label='Line &Style', type='enum', default='solid', list=nwc.txt.DrawPenStyle },
-	{ id='StartOffsetX', label='Start Offset &X', type='float', step=0.1, min=-100, max=100, default=0 },
+	{ id='StartOffsetX', label='St&art Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='EndOffsetX', label='End Offset &X', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='EndOffsetY', label='End Offset &Y', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='Gap', label='&Open Gap Height', type='float', default=2.5, min=0, max=100, step=0.5 },
-	{ id='Gap2', label='&Closed Gap Height', type='float', default=0, min=0, max=100, step=0.5 },
+	{ id='Gap2', label='C&losed Gap Height', type='float', default=0, min=0, max=100, step=0.5 },
 	{ id='Weight', label='Line &Weight', type='float', default=1, min=0, max=5, step=0.1 },
 }
 
