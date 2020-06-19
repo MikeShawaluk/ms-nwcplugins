@@ -1,4 +1,4 @@
--- Version 1.1
+-- Version 1.2
 
 --[[----------------------------------------------------------------
 This object draws a crescendo or decrescendo hairpin at a specified location on the score. The gap at the open
@@ -27,6 +27,9 @@ in an angled hairpin. The range of values is -100.00 to 100.00. The default sett
 @Gap
 This will adjust the size of the gap at the open end of the hairpin, in units of vertical note spacing.
 The range of values is 0 to 100.0, and the default setting is 2.5.
+@Gap2
+This will adjust the size of the gap at the closed end of the hairpin, in units of vertical note spacing.
+The range of values is 0 to 100.0, and the default setting is 0.
 @Weight
 This is the line weight of the hairpin line. The range of values is 0 to 5.0, and the default setting is 1.0.
 --]]----------------------------------------------------------------
@@ -41,7 +44,8 @@ local spec_Hairpin = {
 	{ id='StartOffsetX', label='Start Offset &X', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='EndOffsetX', label='End Offset &X', type='float', step=0.1, min=-100, max=100, default=0 },
 	{ id='EndOffsetY', label='End Offset &Y', type='float', step=0.1, min=-100, max=100, default=0 },
-	{ id='Gap', label='&Gap Height', type='float', default=2.5, min=0, max=100, step=0.5 },
+	{ id='Gap', label='&Open Gap Height', type='float', default=2.5, min=0, max=100, step=0.5 },
+	{ id='Gap2', label='&Closed Gap Height', type='float', default=0, min=0, max=100, step=0.5 },
 	{ id='Weight', label='Line &Weight', type='float', default=1, min=0, max=5, step=0.1 },
 }
 
@@ -112,7 +116,7 @@ local function draw_Hairpin(t)
 	local span = t.Span
 	local leftoffset = t.StartOffsetX - 0.5
 	local rightoffset_x, rightoffset_y = t.EndOffsetX+0.25, t.EndOffsetY
-	local gap = t.Gap
+	local gap, gap2 = t.Gap, t.Gap2
 	
 	user:find('next', 'noteOrRest')
 	if not user then return end
@@ -125,8 +129,10 @@ local function draw_Hairpin(t)
 
 	local x2 = rightoffset_x + user:xyRight()
 	
-	local leftgap, rightgap = 0, 0
-	if hairpintype == typeList[1] then rightgap = gap / 2 else leftgap = gap / 2 end
+	local leftgap, rightgap = gap / 2, gap2 / 2 
+	if hairpintype == typeList[1] then
+		rightgap, leftgap = leftgap, rightgap
+	end
 	nwcdraw.line(x1+leftoffset, -leftgap, x2, rightoffset_y - rightgap)
 	nwcdraw.line(x1+leftoffset, leftgap, x2, rightoffset_y + rightgap)
 	
