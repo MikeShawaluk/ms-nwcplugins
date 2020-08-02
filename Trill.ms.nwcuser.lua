@@ -1,4 +1,4 @@
--- Version 2.1
+-- Version 2.2
 
 --[[----------------------------------------------------------------
 This plugin draws a trill above or below a set of notes, and optionally plays the trill.
@@ -32,6 +32,45 @@ is -10.00 to 10.00. The default setting is 0.
 This will adjust the horizontal position of the trill's end point. The range of values 
 is -10.00 to 10.00. The default setting is 0.
 --]]----------------------------------------------------------------
+
+if nwcut then
+	local userObjTypeName = arg[1]
+	local score = nwcut.loadFile()
+
+	local once = 'Add'
+	local noteobjTypes = { Note = true, Chord = true, RestChord = true }
+	
+	local function applyTrill(o)
+		if not once or o:IsFake() then return end
+
+		if o.UserType == userObjTypeName then
+			once = 'Del'
+			return 'delete'
+		elseif noteobjTypes[o.ObjType] then
+			local opts = o:Provide('Opts')
+			if once == 'Add' then
+				local o2 = nwcItem.new('|User|'..userObjTypeName)
+				o2.Opts.Pos = 9
+				opts.Muted = ''
+				once = false
+				return { o2, o }
+			else
+				opts.Muted = nil
+				once = false
+			end
+		end
+	end
+
+	score:forSelection(applyTrill)
+	if not once then
+		score:save()
+	else
+		nwcut.msgbox(('No note or chord found for %s'):format(userObjTypeName))
+	end
+	return
+end
+
+local _nwcut = { ['Toggle'] = 'ClipText' }
 
 local userObjTypeName = ...
 local user = nwcdraw.user
@@ -210,7 +249,20 @@ local function _spin(t, d)
 	t.Span = t.Span
 end
 
+local function _create(t)
+	if idx:find('prior', 'user', userObjTypeName) then
+		local params = { 'Pos' }
+		for k, s in ipairs(_spec) do
+			params[#params+1] = s.id
+		end
+		for k, s in ipairs(params) do
+			t[s] = idx:userProp(s)
+		end
+	end
+end
+
 return {
+	nwcut = _nwcut,
 	span = _span,
 	audit = _audit,
 	spec = _spec,
@@ -218,4 +270,5 @@ return {
 	draw = _draw,
 	width = _draw,
 	play = _play,
+	create = _create,
 }
