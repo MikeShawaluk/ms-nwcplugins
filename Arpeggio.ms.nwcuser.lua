@@ -1,4 +1,4 @@
--- Version 2.2
+-- Version 2.2a
 
 --[[----------------------------------------------------------------
 This plugin draws an arpeggio marking next to a chord, and can optionally play the notes in 
@@ -51,14 +51,47 @@ a score. The default setting is off (unchecked).
 
 if nwcut then
 	local userObjTypeName = arg[1]
+	local userAction = arg[2]
 	local score = nwcut.loadFile()
 
 	local once = 'Add'
 	local noteobjTypes = { Chord = true, RestChord = true }
 	
 	local function applyArpeggio(o)
+		if not once then return end
+		if o:IsFake() then
+			if o.ObjType == 'User' and o.UserType == userObjTypeName then
+				foundPrev = true
+				prev = o.Opts
+			end
+			return
+		end
+		if o.UserType == userObjTypeName then
+			once = 'Del'
+			return 'delete'
+		elseif noteobjTypes[o.ObjType] then
+			local opts = o:Provide('Opts')
+			if once == 'Add' then
+				local o2 = nwcItem.new('|User|'..userObjTypeName)
+				if foundPrev then
+					for k,v in pairs(prev) do
+						o2.Opts[k] = v
+					end
+				else
+					o2.Opts.Pos = 0
+				end
+				opts.Muted = ''
+				once = false
+				return { o2, o }
+			else
+				opts.Muted = nil
+				once = false
+			end
+		end
+	end
+		
+	local function applyArpeggioOld(o)
 		if not once or o:IsFake() then return end
-
 		if o.UserType == userObjTypeName then
 			once = 'Del'
 			return 'delete'
@@ -77,7 +110,11 @@ if nwcut then
 		end
 	end
 
-	score:forSelection(applyArpeggio)
+	if userAction == 'Toggle' then
+		score:forSelection(applyArpeggio)
+	else
+		score:forSelection(applyArpeggioOld)
+	end
 	if not once then
 		score:save()
 	else
@@ -86,7 +123,10 @@ if nwcut then
 	return
 end
 
-local _nwcut = { ['Toggle'] = 'ClipText' }
+local _nwcut = {
+	['Toggle'] = 'ClipText',
+	['Toggle (Old)'] = 'ClipText',
+}
 
 local userObjTypeName = ...
 local user = nwcdraw.user
