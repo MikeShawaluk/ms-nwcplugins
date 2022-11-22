@@ -1,4 +1,4 @@
-﻿-- Version 2.2  Flurmy  1/2022
+﻿-- Version 2.3
 
 --[[----------------------------------------------------------------
 This will draw a glissando line between two notes, with optional text above the line. If either of the notes is a chord, the bottom notehead
@@ -24,10 +24,14 @@ This will adjust the weight (thickness) of both straight and wavy line types. Th
 @Playback
 This can be used to activate different optional forms of play back. Most play back methods are best when the target (left side) note is muted.
 PitchBend also supports muting the right side note, which will result in a seamless note event that bends from one pitch to the other.
-@GlissDelay
-This can delay the start of the glissando for a certain percent of the note duration. Default is 0%, maximum is 99%.
 
 For PitchBend, the staff/instrument definition should establish a 24 semitone pitch bend. For best results, the note pair should also be within ±24 semitones.
+@GlissDelay
+This can delay the start of the glissando for a certain percent of the note duration. Default is 0%, maximum is 99%.
+@EndNoteShift
+This will adjust the pitch of the ending note upwards or downwards by the specified number of semitones. It is used when a clef change or transposition (i.e. 8va or 8va bassa) occurs between the starting and ending note of the glissando. A value of ±20 would be used for changes between treble and bass clefs. The range of values  is -100 to 100. The default setting is 0.
+
+
 --]]----------------------------------------------------------------
 
 local userObjTypeName = ...
@@ -54,13 +58,14 @@ local _spec = {
   { id='Pen', label='Line Style', type='enum', default=lineStyles[1], list=lineStyles },
   { id='Text', label='Text', type='text', default='gliss.' },
   { id='Scale', label='Text Scale (%)', type='int', min=5, max=400, step=5, default=75 },
-  { id='StartOffsetX', label='Start Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
-  { id='StartOffsetY', label='Start Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
-  { id='EndOffsetX', label='End Offset X', type='float', step=0.1, min=-100, max=100, default=0 },
-  { id='EndOffsetY', label='End Offset Y', type='float', step=0.1, min=-100, max=100, default=0 },
+  { id='StartOffsetX', label='Start Offset X, Y', type='float', step=0.1, min=-100, max=100, default=0 },
+  { id='StartOffsetY', label='', type='float', step=0.1, min=-100, max=100, default=0 },
+  { id='EndOffsetX', label='End Offset X, Y', type='float', step=0.1, min=-100, max=100, default=0 },
+  { id='EndOffsetY', label='', type='float', step=0.1, min=-100, max=100, default=0 },
   { id='Weight', label='Line Weight', type='float', default=1, min=0, max=5, step=0.1 },
   { id='Playback', label='Pla&yback', type='enum', default=PlaybackStyle[1], list=PlaybackStyle },
-  { id='GlissDelay', label='Gliss &Delay (%)', type='int', min=0, max=99, step=1, default=0 }
+  { id='GlissDelay', label='Gliss &Delay (%)', type='int', min=0, max=99, step=1, default=0 },
+  { id='EndNoteShift', label='End Note Shift', type='int', min=-100, max=100, step=1, default=0 },
 }
 
 local _spec2 = {}
@@ -222,7 +227,7 @@ local function _play(t)
   local SweepDelaySPP = math.floor((t.GlissDelay*dur)/100)
 
   local v1 = nwcplay.getNoteNumber(priorNoteidx:notePitchPos(1))
-  local v2 = nwcplay.getNoteNumber(nextNoteidx:notePitchPos(1))
+  local v2 = nwcplay.getNoteNumber(nextNoteidx:notePitchPos(1))+t.EndNoteShift
   if (not v1) or (not v2) or (v2 == v1) then return end
 
   local inc = (v1<v2) and 1 or -1
