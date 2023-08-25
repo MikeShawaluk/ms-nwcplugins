@@ -1,4 +1,4 @@
--- Version 2.2
+-- Version 2.3
 
 --[[----------------------------------------------------------------
 This plugin draws a trill above or below a set of notes, and optionally plays the trill.
@@ -15,7 +15,7 @@ This specifies the accidental to be applied to the auxiliary note. Possible valu
 @LineType
 This specifies the style of the extender line to be drawn. The choices are Wavy and Jagged, and the default setting is Wavy.
 @Rate
-This specifies the rate at which the trill is played, as a number of notes per whole note duration. The range of 
+This specifies the rate at which the trill is played, as a number of notes per whole note duration. The range of
 values is 16 (slow) to 128 (very fast), with a default setting of 32 (32nd notes).
 @WhichFirst
 This determines whether the principal note or the auxiliary note should be played first in the trill. The default setting is Principal.
@@ -26,10 +26,10 @@ The default setting is Auto.
 @Play
 This enables playback of the trill. The default setting is on (checked).
 @StartOffset
-This will adjust the horizontal position of the trill's start point. The range of values 
+This will adjust the horizontal position of the trill's start point. The range of values
 is -10.00 to 10.00. The default setting is 0.
 @EndOffset
-This will adjust the horizontal position of the trill's end point. The range of values 
+This will adjust the horizontal position of the trill's end point. The range of values
 is -10.00 to 10.00. The default setting is 0.
 --]]----------------------------------------------------------------
 
@@ -39,7 +39,7 @@ if nwcut then
 
 	local once = 'Add'
 	local noteobjTypes = { Note = true, Chord = true, RestChord = true }
-	
+
 	local function applyTrill(o)
 		if not once or o:IsFake() then return end
 
@@ -102,7 +102,7 @@ local _spec = {
 	{ id='AccStyle', label='Accidental Style', type='int', default=1, min=1, max=#accStyleList },
 	{ id='Accidental', label='Accidental', type='enum', default=accList[1], list=accList },
 	{ id='LineType', label='Line Type', type='enum', default=lineTypeList[1], list=lineTypeList },
-	{ id='Rate', label='Playback Rate', type='int', default=32, min=16, max=128 },
+	{ id='Rate', label='Playback Rate', type='int', default=32, min=8, max=128 },
 	{ id='WhichFirst', label='Play Which First', type='enum', default=playWhichFirstList[1], list=playWhichFirstList },
 	{ id='AuxNoteInt', label='Auxiliary Note Interval', type='enum', default='Auto', list=auxNotePitchList },
 	{ id='Play', label='Playback Enabled', type='bool', default=true },
@@ -143,7 +143,7 @@ local function _draw(t)
 	nwcdraw.setFontClass('StaffSymbols')
 	nwcdraw.setFontSize(nwcdraw.getFontSize()*scale)
 	local trLen = nwcdraw.calcTextSize(tr)
-	
+
 	if not hasTargetNote(idx) then
 		if not nwcdraw.isDrawing() then return trLen end
 		nwcdraw.alignText('middle', 'right')
@@ -152,7 +152,7 @@ local function _draw(t)
 		return
 	end
 	if not nwcdraw.isDrawing() then return 0 end
-	
+
 	nwcdraw.alignText('middle', 'left')
 	startNote:find('next', 'note')
 	local x1 = startNote:xyTimeslot() + t.StartOffset
@@ -175,7 +175,7 @@ local function _draw(t)
 	nwcdraw.moveTo(x1, 0)
 	local accLen = 0
 	nwcdraw.text(tr)
-	
+
 	if atSpanFront then
 		if acc ~= '' then
 			local yo, sf = accStyleVars[1], accStyleVars[2]
@@ -229,8 +229,9 @@ local function _play(t)
 	end
 
 	if not found then play2:find('last') end
-	local pitchPos1 = play1:notePitchPos(1)
-	local auxNotePos = string.format('%s%s', accNwctxtList[t.Accidental], sp+play1:notePos(1)+1)
+	local topNote = play1:noteCount()
+	local pitchPos1 = play1:notePitchPos(topNote)
+	local auxNotePos = string.format('%s%s', accNwctxtList[t.Accidental], sp+play1:notePos(topNote)+1)
 
 	notes[1] = nwcplay.getNoteNumber(pitchPos1)
 	notes[2] = auxNoteInt == 0 and nwcplay.getNoteNumber(auxNotePos) or notes[1] + auxNoteInt
