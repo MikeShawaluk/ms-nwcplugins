@@ -16,7 +16,7 @@ This specifies the accidental to be applied to the auxiliary note. Possible valu
 This specifies the style of the extender line to be drawn. The choices are Wavy and Jagged, and the default setting is Wavy.
 @Rate
 This specifies the rate at which the trill is played, as a number of notes per whole note duration. The range of
-values is 16 (slow) to 128 (very fast), with a default setting of 32 (32nd notes).
+values is 8 (very slow) to 128 (very fast), with a default setting of 32 (32nd notes).
 @WhichFirst
 This determines whether the principal note or the auxiliary note should be played first in the trill. The default setting is Principal.
 @AuxNoteInt
