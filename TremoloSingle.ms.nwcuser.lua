@@ -1,4 +1,4 @@
--- Version 2.1
+-- Version 2.0f
 
 --[[----------------------------------------------------------------
 This object creates a single note tremolo marking. It draws the markings, and will optionally play the note in tremolo style.
@@ -73,7 +73,6 @@ local user = nwcdraw.user
 local durations = { Eighth=1, Sixteenth=2, Thirtysecond=3, Sixtyfourth=4 }
 local whichList = { 'top', 'bottom' }
 local whichStemDirList = { top=1, bottom=-1}
-local whichDur = { top='Dur', bottom='Dur2' }
 
 local _nwcut = {
 	['Apply'] = 'ClipText',
@@ -154,7 +153,9 @@ local function _play(t)
 	local whichStemDir = idx:objType() == 'RestChord' and idx:stemDir(1) or whichStemDirList[t.Which]
 	local b = t.Beams + (durations[idx:durationBase(1)] or 0)
 	local dur = nwcplay.PPQ / 2^b * (t.TripletPlayback and 2/3 or 1)
-	local fini = idx:sppOffset() + nwcplay.calcDurLength(idx:objProp(whichDur[t.Which]))-1
+	idx:find('next')
+	local fini = idx:sppOffset() - 1
+	idx:find('prior')
 	local defaultVel = nwcplay.getNoteVelocity()
 	local vel = { defaultVel, math.min(127, defaultVel * t.Variance/100) }
 	local i = 1
