@@ -1,4 +1,4 @@
--- Version 2.0f
+-- Version 2.1a
 
 --[[----------------------------------------------------------------
 This object creates a single note tremolo marking. It draws the markings, and will optionally play the note in tremolo style.
@@ -114,6 +114,16 @@ local function drawBeams(beams, x, ys, stemDir, wf, isError)
 	end
 end
 
+local function calcDuration(idx, t)
+	local dotMul = { 1.5, 1.75 }
+	local note = t.Which == 'bottom' and 1 or idx:noteCount()
+	local dur = nwcplay.calcDurLength(idx:durationBase(note))
+	local hasDots = idx:isDotted(note)
+	if hasDots then dur = dur * dotMul[hasDots] end
+	if idx:isTriplet(note) then dur = dur * 2 / 3 end
+	return math.floor(dur + 0.5)
+end
+
 local function _draw(t)
 	local _, my = nwcdraw.getMicrons()
 	local stemWeight = my*0.0126
@@ -153,9 +163,7 @@ local function _play(t)
 	local whichStemDir = idx:objType() == 'RestChord' and idx:stemDir(1) or whichStemDirList[t.Which]
 	local b = t.Beams + (durations[idx:durationBase(1)] or 0)
 	local dur = nwcplay.PPQ / 2^b * (t.TripletPlayback and 2/3 or 1)
-	idx:find('next')
-	local fini = idx:sppOffset() - 1
-	idx:find('prior')
+	local fini = idx:sppOffset() + calcDuration(idx, t) - 1
 	local defaultVel = nwcplay.getNoteVelocity()
 	local vel = { defaultVel, math.min(127, defaultVel * t.Variance/100) }
 	local i = 1
