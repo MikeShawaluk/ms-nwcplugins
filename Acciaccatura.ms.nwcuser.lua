@@ -1,4 +1,4 @@
--- Version 1.3
+-- Version 1.4
 
 --[[-----------------------------------------------------------------------------------------
 This plugin creates acciaccatura by drawing a slash on the stem of a plain grace note
@@ -72,13 +72,14 @@ local function _play(t)
 	while found do
 		repeat
 			found = play:find('next', 'note')
-		until play:isGrace() or not found
-		if found and play < nextObj and play:isGrace() and play:durationBase() == 'Eighth' and not play:isBeamed() and play:isMute() then
+		until play:isGrace() or play >= nextObj or not found
+		if found and play:sppOffset() < nwcplay.MAXSPPOFFSET and play:isGrace() and play:durationBase() == 'Eighth' and not play:isBeamed() and play:isMute() then
 			local noteCount = play:noteCount()
 			local duration = (4 * nwcplay.PPQ / t.Rate)
 			local start = play:sppOffset() - duration
 			for i = 1, noteCount do
-				nwcplay.note(start, duration, nwcplay.getNoteNumber(play:notePitchPos(i)))
+				local r, errtxt = nwcplay.note(start, duration, nwcplay.getNoteNumber(play:notePitchPos(i)))
+				if not r and errtxt then print(errtxt) end
 			end
 		end
 		found = found and isStaffSig
