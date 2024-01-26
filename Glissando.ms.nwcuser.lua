@@ -1,4 +1,4 @@
-﻿-- Version 2.4
+﻿-- Version 2.5
 
 --[[----------------------------------------------------------------
 This will draw a glissando line between two notes, with optional text above the line. If either of the notes is a chord, the bottom notehead
@@ -26,7 +26,7 @@ This can be used to activate different optional forms of play back.
 The glissando duration is the duration of the left side note alone, disregarding possible ties.
 Playback is best when both the left and right side notes are muted.
 
-For PitchBend, the staff/instrument definition should establish a 24 semitone pitch bend. For best results, the note pair should also be within ±24 semitones.
+For PitchBend, the staff/instrument definition should establish a 24 semitone pitch-bend. For best results, the note pair should also be within ±24 semitones.
 For the other playback modes only a single note plays glissando.
 @GlissDelay
 This can delay the start of the glissando for a certain percent of the note duration. Default is 0%, maximum is 99%.
@@ -49,7 +49,7 @@ local currentOctaveShift = 'None'
 local lineStyles = { 'solid', 'dot', 'dash', 'wavy' }
 local squig = '~'
 local showBoxes = { edit=true }
-local pbNeutral = 0x02000 -- This is also the pitch bend MIDI range
+local pbNeutral = 0x02000 -- This is also the pitch-bend MIDI range
 
 local PlaybackStyle = {'None', 'Chromatic', 'WhiteKeys', 'BlackKeys', 'PitchBend'}
 local KeyIntervals = {
@@ -245,19 +245,12 @@ local function setPitchBend(Start, pbValue)
   nwcplay.midi(Start, 'pitchBend', dLSB, dMSB)
 end
 
--- Note duration as tenuto
-local function getFullDuration(n)
-  local start = n:sppOffset()
-  local duration = 0
-  if n:find('next') then
-    duration = math.max(n:sppOffset() - start, 1) - 1
-    n:find('prior') -- Restore
-  end
-  return duration
+local function sanityCheck(x)
+  return math.max(x, 1) - 1
 end
 
--- Note duration including articulation
-local function getDuration(n)
+-- Fraction of note duration based on articulation
+local function getDurationFraction(n)
   local durationFraction = 0.83
   if n:isStaccatissimo() then
     durationFraction = 0.28
@@ -270,19 +263,44 @@ local function getDuration(n)
       end
     end
   end
-  return math.floor(getFullDuration(n)*durationFraction)
+  return durationFraction
 end
 
--- Duration of the possible rest after the target note
-local function nextRestTime(n)
-  scanidx:reset()
-  if scanidx:find(n) and scanidx:find('next', 'noteOrRest') then
-    local restStart = scanidx:sppOffset()
-    if (scanidx:objType() == 'Rest') and scanidx:find('next', 'note') then
-      return math.max(scanidx:sppOffset() - restStart, 1) - 1
+-- Duration of note, including ties and articulation, as tenuto and rest after glissando
+local function getTiedDuration(n)
+  local duration = 0
+  local count = 0
+  local restDuration = 0
+  local start = n:sppOffset()
+  local lastNoteStart = start
+  while n:isTieOut() and n:find('next', 'noteOrRest') do
+    count = count + 1
+    if n:objType() ~= 'Rest' then
+      -- Full note duration (tenuto)
+      duration = duration + (n:sppOffset() - lastNoteStart)
+      lastNoteStart = n:sppOffset()
     end
   end
-  return 0
+  if n:find('next', 'noteOrRest') or n:find('next') then
+    -- Last note of the tie chain (articulated)
+    count = count + 1
+    duration = duration + math.floor((n:sppOffset() - lastNoteStart)*getDurationFraction(n))
+    lastNoteStart = n:sppOffset()
+  end
+  if n:objType() == 'Rest' then
+    -- Rest following glissando
+    if n:find('next', 'noteOrRest') or n:find('next') then
+      count = count + 1
+      restDuration = sanityCheck(n:sppOffset() - lastNoteStart)
+    end
+  end
+  -- Restore n
+  while count > 0 do
+    n:find('prior', 'noteOrRest')
+    count = count - 1
+  end
+  --       Articulated                Tenuto
+  return sanityCheck(duration), sanityCheck(lastNoteStart - start), restDuration
 end
 
 local function replaceAccidental(note, newAcc)
@@ -346,7 +364,7 @@ local function _play(t)
   -----------------------------------------------------------------------------
   if playbackt == 'PitchBend' then
     -- This technique requires that the part has a dedicated
-    -- MIDI channel and a 24 semitone pitch bend range
+    -- MIDI channel and a 24 semitone pitch-bend range
     local pbRange = 24 -- Semitones
     step = step*math.min(math.abs(v1 - v2), pbRange)
     local pbStart = 0 -- Start the sweep at the source pitch
@@ -354,32 +372,37 @@ local function _play(t)
     local playingMidiNotes = {}
 
     -- If the source note/chord stands alone (is not tied) and is muted,
-    -- then the pitch bend can be applied against the target pitch
+    -- then the pitch-bend can be applied against the target pitch
     if isStandAloneMutedNote(priorNoteidx) then
       local noteDur = glissDur
       -- Reverse the sweep direction
       pbStart = -pbEnd
       pbEnd = 0 -- Finish with pb = 0 at the target pitch
 
-      -- If both source and target are stand-alone muted
+      -- If both source and target are muted
       -- then the target is played legato to the glissando
-      if isStandAloneMutedNote(nextNoteidx) and not partOfNextPlayGliss(nextNoteidx) then
+      if nextNoteidx:isMute() and not partOfNextPlayGliss(nextNoteidx) then
         -- Add the duration of the target note that will be played with stable pitch
-        noteDur = noteDur + getDuration(nextNoteidx)
+        noteDur = noteDur + getTiedDuration(nextNoteidx)
       end
 
       -- Play the source muted note/chord transposed to target pitch
       local delta = v2 - v1
       for j = 1, priorNoteidx:noteCount() do
-        table.insert(playingMidiNotes,
-                     nwcplay.getNoteNumber(priorNoteidx:notePitchPos(j)) + delta)
-        -- If a source note has a corresponding note in the target (n.b. the target
-        -- notes intervals are irrelevent, the source intervals are always used)
-        -- it will sound the whole time, otherwise the note will stop playing
-        -- at the end of glissando
-        nwcplay.note(startSPP, nextNoteidx:notePitchPos(j) and noteDur or glissDur, playingMidiNotes[j], noteVel)
+      	if nextNoteidx:isTieOut(j) then
+      	  -- Let the tied note stopping this one
+          nwcplay.midi(startSPP, 'noteOn', nwcplay.getNoteNumber(priorNoteidx:notePitchPos(j)) + delta, noteVel)
+        else
+          table.insert(playingMidiNotes,
+                       nwcplay.getNoteNumber(priorNoteidx:notePitchPos(j)) + delta)
+          -- If a source note has a corresponding note in the target (n.b. the target
+          -- notes intervals are irrelevent, the source intervals are always used)
+          -- it will sound the whole time, otherwise the note will stop playing
+          -- at the end of glissando
+          nwcplay.note(startSPP, nextNoteidx:notePitchPos(j) and noteDur or glissDur, playingMidiNotes[j], noteVel)
+        end
       end
-    else -- Pitch bend applied against the source pitch
+    else -- Pitch-bend applied against the source pitch
       for j = 1, priorNoteidx:noteCount() do
       	local note = nwcplay.getNoteNumber(replaceAccidental(priorNoteidx:notePitchPos(j), accidentals[j]))
         table.insert(playingMidiNotes, note)
@@ -390,7 +413,7 @@ local function _play(t)
       end
     end
 
-    -- Pitch bend glissando
+    -- Pitch-bend glissando
     setPitchBend(startSPP, pbStart)
     local ticsStep = 2
     startSPP = startSPP + ticsStep + SweepDelaySPP
@@ -405,12 +428,13 @@ local function _play(t)
 
     local resetSPP = startSPP
     if priorNoteidx:isTieIn() and priorNoteidx:isMute() then
-      -- If the target is muted then keep playing for its duration
       if nextNoteidx:isMute() then
-        startSPP = startSPP + getDuration(nextNoteidx)
-        -- To avoid glitch sounds reset the pitch bend as late as possible
+        -- If the target is muted then keep playing for its duration
+      	local duration, fullDuration, restDuration = getTiedDuration(nextNoteidx)
+        startSPP = startSPP + duration
+        -- To avoid glitch sounds reset the pitch-bend as late as possible
         -- If the glissato is followed by a rest we can delay the reset more
-        resetSPP = resetSPP + getFullDuration(nextNoteidx) + nextRestTime(nextNoteidx)
+        resetSPP = resetSPP + fullDuration + restDuration
       end
       -- Stop the sound for it will not stop by itself
       for j = 1, #playingMidiNotes do
@@ -421,18 +445,22 @@ local function _play(t)
     end
 
     -- Warning: when pbEnd is not 0, depending on the release time of the
-    -- voice there will be a nasty sound when the pitch bend returns to 0
-    setPitchBend(resetSPP, 0) -- Restore neutral pitch bend
+    -- voice there will be a nasty sound when the pitch-bend returns to 0
+    setPitchBend(resetSPP, 0) -- Restore neutral pitch-bend
   else ------------------------------------------------------------------------
-    -- Not pitch bend: assumes it's a single note, not a chord
+    -- Not pitch-bend: assumes it's a single note, not a chord
     -- In case of a chord, only the lowest note plays glissando
     local interval1 = CountGlissIntervals(playback, v1, step)
     local interval2 = CountGlissIntervals(playback, v2, step)
     local deltav = math.abs(interval1 - interval2)
+    if nextNoteidx:isGrace() and nextNoteidx:isMute() then
+      -- Let's play a bit thet note too
+      deltav = deltav + 1
+    end
     local deltaSPP
     if (SweepDelaySPP == 0) and not priorNoteidx:isTieIn() then
       -- Let the source note sound a bit
-      deltaSPP = glissDur/(deltav + 1)
+      deltaSPP = glissDur/deltav
       SweepDelaySPP = deltaSPP
     else
       deltaSPP = (glissDur - SweepDelaySPP)/deltav
@@ -458,7 +486,7 @@ local function _play(t)
 
     -- If muted, play the target notes (chords allowed)
     if nextNoteidx:isMute() then
-      local noteDur = getDuration(nextNoteidx)
+      local noteDur = getTiedDuration(nextNoteidx)
       for j = 1, nextNoteidx:noteCount() do
         nwcplay.note(startSPP, noteDur, nwcplay.getNoteNumber(nextNoteidx:notePitchPos(j)), noteVel)
       end
