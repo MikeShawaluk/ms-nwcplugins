@@ -1,4 +1,4 @@
-﻿-- Version 2.5
+﻿-- Version 2.6
 
 --[[----------------------------------------------------------------
 This will draw a glissando line between two notes, with optional text above the line. If either of the notes is a chord, the bottom notehead
@@ -51,13 +51,14 @@ local squig = '~'
 local showBoxes = { edit=true }
 local pbNeutral = 0x02000 -- This is also the pitch-bend MIDI range
 
-local PlaybackStyle = {'None', 'Chromatic', 'WhiteKeys', 'BlackKeys', 'PitchBend'}
+local PlaybackStyle = {'None', 'Chromatic', 'WhiteKeys', 'BlackKeys', 'PitchBend', 'Harp'}
 local KeyIntervals = {
   None = {},
   Chromatic = {0,1,2,3,4,5,6,7,8,9,10,11},
   WhiteKeys = {0,2,4,5,7,9,11},
   BlackKeys = {1,3,6,8,10},
   PitchBend = {24},
+  Harp      = {0,1,2,3,4,5,6}
 }
 
 local _spec = {
@@ -197,7 +198,7 @@ local function CountGlissIntervals(k, v)
   return #k*o + GlissOctaveNearestNextInterval(k, i)
 end
 
-local function GlissNoteFromInterval(k,v)
+local function GlissNoteFromInterval(k, v)
   local opitches = #k
   local o = math.floor(v/opitches)
   local i = v % opitches
@@ -351,7 +352,8 @@ local function _play(t)
 
   currentClef = nwcplay.getClef()
   -- currentOctaveShift = nwcplay.???  Information not available: using default
-  local v2 = nwcplay.getNoteNumber(nextNoteidx:notePitchPos(1)) + t.EndNoteShift + clefChangeShift()
+  local targetShift = t.EndNoteShift + clefChangeShift()
+  local v2 = nwcplay.getNoteNumber(nextNoteidx:notePitchPos(1)) + targetShift
   if (not v2) or (v2 == v1) then return end
   local step = (v1 < v2) and 1 or -1
 
@@ -450,8 +452,8 @@ local function _play(t)
   else ------------------------------------------------------------------------
     -- Not pitch-bend: assumes it's a single note, not a chord
     -- In case of a chord, only the lowest note plays glissando
-    local interval1 = CountGlissIntervals(playback, v1, step)
-    local interval2 = CountGlissIntervals(playback, v2, step)
+    local interval1 = CountGlissIntervals(playback, v1)
+    local interval2 = CountGlissIntervals(playback, v2)
     local deltav = math.abs(interval1 - interval2)
     if nextNoteidx:isGrace() and nextNoteidx:isMute() then
       -- Let's play a bit thet note too
@@ -477,9 +479,17 @@ local function _play(t)
 
     -- Play the glissando
     startSPP = startSPP + SweepDelaySPP
+    if playbackt == 'Harp' then
+      interval1 = priorNoteidx:notePos(1)
+    end
     for i = 2, deltav do
       interval1 = interval1 + step
-      local notepitch = GlissNoteFromInterval(playback, interval1)
+      local notepitch
+      if playbackt == 'Harp' then
+    	notepitch = nwcplay.getNoteNumber(interval1)
+      else
+        notepitch = GlissNoteFromInterval(playback, interval1)
+      end
       nwcplay.note(startSPP, deltaSPP, notepitch, noteVel)
       startSPP = startSPP + deltaSPP
     end
@@ -488,7 +498,7 @@ local function _play(t)
     if nextNoteidx:isMute() then
       local noteDur = getTiedDuration(nextNoteidx)
       for j = 1, nextNoteidx:noteCount() do
-        nwcplay.note(startSPP, noteDur, nwcplay.getNoteNumber(nextNoteidx:notePitchPos(j)), noteVel)
+        nwcplay.note(startSPP, noteDur, nwcplay.getNoteNumber(nextNoteidx:notePitchPos(j)) + targetShift, noteVel)
       end
     end
   end
