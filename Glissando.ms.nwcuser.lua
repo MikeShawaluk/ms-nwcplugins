@@ -1,4 +1,4 @@
-﻿-- Version 2.6
+﻿-- Version 2.7
 
 --[[----------------------------------------------------------------
 This will draw a glissando line between two notes, with optional text above the line. If either of the notes is a chord, the bottom notehead
@@ -452,11 +452,17 @@ local function _play(t)
   else ------------------------------------------------------------------------
     -- Not pitch-bend: assumes it's a single note, not a chord
     -- In case of a chord, only the lowest note plays glissando
-    local interval1 = CountGlissIntervals(playback, v1)
-    local interval2 = CountGlissIntervals(playback, v2)
+    local interval1, interval2
+    if playbackt == 'Harp' then
+      interval1 = priorNoteidx:notePos(1)
+      interval2 = nextNoteidx:notePos(1)
+    else
+      interval1 = CountGlissIntervals(playback, v1)
+      interval2 = CountGlissIntervals(playback, v2)
+    end
     local deltav = math.abs(interval1 - interval2)
     if nextNoteidx:isGrace() and nextNoteidx:isMute() then
-      -- Let's play a bit thet note too
+      -- Let's play a bit that note too
       deltav = deltav + 1
     end
     local deltaSPP
@@ -479,9 +485,6 @@ local function _play(t)
 
     -- Play the glissando
     startSPP = startSPP + SweepDelaySPP
-    if playbackt == 'Harp' then
-      interval1 = priorNoteidx:notePos(1)
-    end
     for i = 2, deltav do
       interval1 = interval1 + step
       local notepitch
