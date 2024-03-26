@@ -1,4 +1,4 @@
--- Version 2.1a
+-- Version 2.2
 
 --[[----------------------------------------------------------------
 This plugin draw a guitar chord chart and optionally strums the chord when the song is played. 
@@ -565,6 +565,7 @@ end
 
 local function _play(t)
 	if not hasTargetDuration() then return end
+	local trans = nwcplay.getTransposition()
 	local span, capo, strum = t.Span, t.Capo, t.Strum
 	local stringNotes = {40, 45, 50, 55, 59, 64}
 	local k = {}
@@ -593,7 +594,7 @@ local function _play(t)
 	if k then
 		for i, v in ipairs(k) do
 			local thisShift = arpeggioShift * ((strum == 'down') and i-1 or noteCount-i) + startOffset
-			nwcplay.note(thisShift, duration-thisShift, v + capo)
+			nwcplay.note(thisShift, duration-thisShift, v + capo + trans)
 		end
 	end
 end
