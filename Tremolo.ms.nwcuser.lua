@@ -1,4 +1,4 @@
--- Version 2.1
+-- Version 2.2
 
 --[[----------------------------------------------------------------
 This plugin creates two-note tremolo markings. It draws the markings, and will optionally play the notes in tremolo style.
@@ -134,7 +134,7 @@ local function _draw(t)
 	local x1s, y1s = priorNote:xyStemTip(stemDir)
 	local x1 = priorNote:xyTimeslot()
 	y1s = y1s and y1s+0.04*stemDir or priorNote:notePos(1)+yu
-	x1s = x1s or x1+1.3
+	x1s = x1s or priorNote:xyRight()
 	local slope=(y2s-y1s)/(x2s-x1s)
 
 	local function drawBeam(x, y)
