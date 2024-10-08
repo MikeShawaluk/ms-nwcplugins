@@ -1,4 +1,4 @@
-﻿-- Version 2.7
+﻿-- Version 2.8
 
 --[[----------------------------------------------------------------
 This will draw a glissando line between two notes, with optional text above the line. If either of the notes is a chord, the bottom notehead
@@ -32,6 +32,10 @@ For the other playback modes only a single note plays glissando.
 This can delay the start of the glissando for a certain percent of the note duration. Default is 0%, maximum is 99%.
 @EndNoteShift
 This will adjust the pitch of the ending note upwards or downwards by the specified number of semitones. It is used when a clef change or transposition (i.e. 8va or 8va bassa) occurs between the starting and ending note of the glissando. A value of ±20 would be used for changes between treble and bass clefs. The range of values  is -100 to 100. The default setting is 0.
+@PitchBendPeriod
+Delay in tics (NWC uses 384 tics/quarter) between PitchBend updates.
+Too big the value and the glissato gets rough; too small the value and the MIDI channel can be overloaded, in special mode with the original HW.
+In a sense, it is the reverse of the "Sweep Resolution" of the MPC.
 
 --]]----------------------------------------------------------------
 
@@ -73,6 +77,7 @@ local _spec = {
   { id='Playback', label='Pla&yback', type='enum', default=PlaybackStyle[1], list=PlaybackStyle },
   { id='GlissDelay', label='Gliss &Delay (%)', type='int', min=-400, max=99, step=1, default=0 },
   { id='EndNoteShift', label='End Note Shift', type='int', min=-100, max=100, step=1, default=0 },
+  { id='PitchBendPeriod', label='Pitch Bend Period', type='int', min=1, max=100, step=1, default=2 }
 }
 
 local _spec2 = {}
@@ -360,6 +365,9 @@ local function _play(t)
   -- The gliss duration is by default the full duration of priorNote (source)
   local startSPP = priorNoteidx:sppOffset()
   local glissDur = -startSPP
+  if glissDur == 0 then
+    glissDur = 48 -- tics -> 1/32
+  end
   local noteVel = nwcplay.getNoteVelocity()
   local SweepDelaySPP = math.floor((t.GlissDelay*glissDur)/100)
 
@@ -417,7 +425,8 @@ local function _play(t)
 
     -- Pitch-bend glissando
     setPitchBend(startSPP, pbStart)
-    local ticsStep = 2
+     -- N.B. NWC uses 384 tics/quarter, i.e. 24 tics per 1/64
+    local ticsStep = t.PitchBendPeriod
     startSPP = startSPP + ticsStep + SweepDelaySPP
     glissDur = glissDur - SweepDelaySPP
     local pbChanges = math.floor((glissDur/ticsStep) - 1)
@@ -452,7 +461,8 @@ local function _play(t)
   else ------------------------------------------------------------------------
     -- Not pitch-bend: assumes it's a single note, not a chord
     -- In case of a chord, only the lowest note plays glissando
-    local interval1, interval2
+    local interval1
+    local interval2
     if playbackt == 'Harp' then
       interval1 = priorNoteidx:notePos(1)
       interval2 = nextNoteidx:notePos(1)
