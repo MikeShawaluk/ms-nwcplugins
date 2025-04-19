@@ -1,4 +1,4 @@
--- Version 1.1
+-- Version 1.2
 
 --[[--------------------------------------------------------------------------
 This creates a boxed bar label, which defaults to the referenced bar number 
@@ -15,13 +15,16 @@ The scale factor for the text and box. This is a value from 5% to 400%; the
 default setting is 100%. The + and - keys will increase/decrease the value by 5%.
 @Which
 Determines which bar the label should reference, when the bar number is used
-for the label. The choices are next or prior; the default setting is next.
+for the label. The choices are next, prior or auto, where auto will choose the bar line
+which is closest to the object. If the distance is the same, it will default to the next
+bar. The default setting is next.
 --]]--------------------------------------------------------------------------
 
 local userObjTypeName = ...
 local idx = nwc.ntnidx
 local drawidx = nwc.drawpos
-local whichList = { 'next', 'prior' }
+local leftbar, rightbar
+local whichList = { 'next', 'prior', 'auto' }
 
 local object_spec = {
 	{ id='Text', label='Alternate Text', type='text', default='' },
@@ -53,7 +56,16 @@ end
 local function do_draw(t)
 	local xyar = nwcdraw.getAspectRatio()
     local _, my = nwcdraw.getMicrons()
-	drawidx:find(t.Which, 'bar')
+	local which = t.Which
+	if which == 'auto' then
+		idx:find('prior', 'bar')
+		leftbar = math.abs(idx:indexOffset())
+		idx:reset()
+		idx:find('next', 'bar')
+		rightbar = math.abs(idx:indexOffset())
+		which = leftbar < rightbar and 'prior' or 'next'
+	end
+	drawidx:find(which, 'bar')
 	local text = t.Text == '' and drawidx:barCounter()+nwcdraw.getPageSetup('StartingBar') or t.Text
 	local thickness = my*.3
 	nwcdraw.setPen('solid', thickness)
