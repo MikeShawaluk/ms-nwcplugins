@@ -49,6 +49,7 @@ local function do_create(t)
 		t.Scale = idx:userProp('Scale')
 		t.Which = idx:userProp('Which')
 		t.Pos = idx:userProp('Pos')
+		t.Offset = idx:userProp('Offset')
 	end
 end
 
