@@ -1,4 +1,4 @@
--- Version 1.2
+-- Version 1.3
 
 --[[--------------------------------------------------------------------------
 This creates a boxed bar label, which defaults to the referenced bar number 
@@ -18,6 +18,9 @@ Determines which bar the label should reference, when the bar number is used
 for the label. The choices are next, prior or auto, where auto will choose the bar line
 which is closest to the object. If the distance is the same, it will default to the next
 bar. The default setting is next.
+@Offset
+An offset for the bar count. This value is added (or subtracted, if negative) to the 
+bar count of the measure. The default value is 0.
 --]]--------------------------------------------------------------------------
 
 local userObjTypeName = ...
@@ -31,6 +34,7 @@ local object_spec = {
 	{ id='Font', label='Font', type='enum', default='StaffBold', list=nwc.txt.TextExpressionFonts },
 	{ id='Scale', label='Text Scale (%)', type='int', min=5, max=400, step=5, default=100 },
 	{ id='Which', label='Reference Which Bar', type='enum', default=whichList[1], list=whichList },
+	{ id='Offset', label='Offset Count', type='int', default=0 },
 }
 
 local function setFontClassScaled(font, scale, text)
@@ -66,7 +70,7 @@ local function do_draw(t)
 		which = leftbar < rightbar and 'prior' or 'next'
 	end
 	drawidx:find(which, 'bar')
-	local text = t.Text == '' and drawidx:barCounter()+nwcdraw.getPageSetup('StartingBar') or t.Text
+	local text = t.Text == '' and drawidx:barCounter() + nwcdraw.getPageSetup('StartingBar') + t.Offset or t.Text
 	local thickness = my*.3
 	nwcdraw.setPen('solid', thickness)
 	nwcdraw.alignText('middle', 'center')
